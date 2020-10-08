@@ -7,10 +7,34 @@
 
 using namespace std;
 
-struct DataPkg
+enum CMD
 {
-	int age;
-	char name[32];
+	CMD_LOGIN,
+	CMD_LOGOUT,
+	CMD_ERROR
+};
+struct pkgHeader
+{
+	short pkgLen;
+	CMD cmd;
+};
+
+struct LoginData
+{
+	char userName[32];
+	char userWord[32];
+};
+struct LoginResult
+{
+	int result;
+};
+struct LogOutData
+{
+	char userName[32];
+};
+struct LogOutResult
+{
+	int result;
 };
 
 int main()
@@ -46,22 +70,59 @@ int main()
 	
 	while (true)
 	{
-		char sendBuf[256] = {};
-		scanf("%s", sendBuf);
-		if (strcmp(sendBuf, "exit") == 0)
+		char client_cmd[32] = {};
+		scanf("%s", client_cmd);
+		if (strcmp(client_cmd, "exit") == 0)
 			break;
+		else if (strcmp(client_cmd, "login") == 0)
+		{
+			LoginData login = {};
+			printf("输入你的用户名: ");
+			scanf("%s", login.userName);
+			printf("输入你的密码:");
+			scanf("%s", login.userWord);
+
+			pkgHeader header = {};
+			header.cmd = CMD_LOGIN;
+			header.pkgLen = sizeof(LoginData);
+
+			send(_sock, (const char*)&header, sizeof(pkgHeader), 0);
+			send(_sock, (const char*)&login, sizeof(LoginData), 0);
+
+			LoginResult result = {};
+			int recBufLen = recv(_sock, (char*)&header, sizeof(pkgHeader), 0);
+			recBufLen = recv(_sock, (char*)&result, sizeof(LoginResult), 0);
+
+			if (result.result == 202)
+			{
+				printf("登陆成功!\n");
+			}
+		}
+		else if (strcmp(client_cmd, "logout") == 0)
+		{
+			LogOutData logout = {};
+			printf("输入你的用户名: ");
+			scanf("%s", logout.userName);
+
+
+			pkgHeader header = {};
+			header.cmd = CMD_LOGOUT;
+			header.pkgLen = sizeof(LogOutData);
+
+			send(_sock, (const char*)&header, sizeof(pkgHeader), 0);
+			send(_sock, (const char*)&logout, sizeof(LogOutData), 0);
+
+			LogOutResult result = {};
+			int recBufLen = recv(_sock, (char*)&header, sizeof(pkgHeader), 0);
+			recBufLen = recv(_sock, (char*)&result, sizeof(LogOutResult), 0);
+
+			if (result.result == 202)
+			{
+				printf("登出成功!\n");
+			}
+		}
 		else
-		{
-			send(_sock, sendBuf, strlen(sendBuf) + 1, 0);
-		}
-		//  3.接受服务器信息 revc
-		char recBuf[256] = {};
-		int nlen = recv(_sock, recBuf, 256, 0);
-		if (nlen > 0)
-		{
-			DataPkg* rec = (DataPkg*)recBuf;
-			printf("接收到数据: 姓名：%s, 年龄：%d\n", rec->name,rec->age);
-		}
+			printf("无效命令，请重新输入！\n");
 	}
 	//  4.关闭socket closesocket
 	closesocket(_sock);

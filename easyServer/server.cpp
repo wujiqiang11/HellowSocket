@@ -6,12 +6,36 @@
 #include <iostream>
 
 using namespace std;
-
-struct DataPkg
+enum CMD
 {
-	int age;
-	char name[32];
+	CMD_LOGIN,
+	CMD_LOGOUT,
+	CMD_ERROR
 };
+struct pkgHeader
+{
+	short pkgLen;
+	CMD cmd;
+};
+
+struct LoginData
+{
+	char userName[32];
+	char userWord[32];
+};
+struct LoginResult
+{
+	int result;
+};
+struct LogOutData
+{
+	char userName[32];
+};
+struct LogOutResult
+{
+	int result;
+};
+
 
 int main()
 {
@@ -56,8 +80,8 @@ int main()
 
 	while (true)
 	{
-		char recBuf[256] = {};
-		int recBufLen = recv(_csock, recBuf, 256, 0);
+		pkgHeader recHeader = {};
+		int recBufLen = recv(_csock, (char*)&recHeader, sizeof(pkgHeader), 0);  //接收消息包头
 		if (recBufLen <= 0)
 		{
 			printf("客户端退出\n");
@@ -65,21 +89,50 @@ int main()
 		}
 		else
 		{
-			printf("接收到命令: %s\n", recBuf);
+			printf("接收到包头: 长度：%d,类型：%d\n", recHeader.pkgLen,recHeader.cmd);
 		}
-
-		//  5.send 向客户端发送数据
-		if (strcmp(recBuf, "getInfo") == 0)
+		switch (recHeader.cmd)  //查看包头的命令类型
 		{
-			DataPkg msgbuf =  { 18,"wujiqiang" };
-			send(_csock, (const char*)&msgbuf, sizeof(DataPkg), 0);
+			case(CMD_LOGIN):
+			{
+				LoginData recLoginData = {};
+				recBufLen = recv(_csock, (char*)&recLoginData, sizeof(LoginData), 0);
+				if (recBufLen > 0)
+				{
+					printf("接收到登录信息,用户名：%s, 密码：%s\n", recLoginData.userName, recLoginData.userWord);
+					
+					LoginResult sendLoginRe = { 202 };
+					pkgHeader header = {};
+					header.cmd = CMD_LOGIN;
+					header.pkgLen = 0;
+					send(_csock, (const char*)&header, sizeof(pkgHeader), 0);
+					send(_csock, (const char*)&sendLoginRe, sizeof(LoginResult), 0);
+				}
+			}
+				break;
+			case(CMD_LOGOUT):
+			{
+				LogOutData recLogOutData = {};
+				recBufLen = recv(_csock, (char*)&recLogOutData, sizeof(LogOutData), 0);
+				if (recBufLen > 0)
+				{
+					printf("接收到退出登录信息，用户名:  %s\n", recLogOutData.userName);
+					pkgHeader header = {};
+					header.cmd = CMD_LOGOUT;
+					header.pkgLen = 0;
+					LogOutResult  sendLoginOutRe = { 202 };
+					send(_csock, (const char*)&header, sizeof(pkgHeader), 0);
+					send(_csock, (const  char*)&sendLoginOutRe, sizeof(LogOutResult), 0);
+				}
+			}
+				break;
+			default:
+				pkgHeader header = {};
+				header.cmd = CMD_ERROR;
+				header.pkgLen = 0;
+				send(_csock, (const char*)&header, sizeof(pkgHeader), 0);
+				break;
 		}
-		else
-		{
-			char msgbuf[] = "?????";
-			send(_csock, msgbuf, strlen(msgbuf) + 1, 0);
-		}
-		
 	}
 	//  6.关闭socket closesocket
 	closesocket(_sock);
