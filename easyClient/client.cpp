@@ -15,8 +15,8 @@ int main()
 	//----------------
 	//--- 使用socket API建立一个简易的TCP客户端
 	//  1.建立一个socket
-	SOCKET _csock = socket(AF_INET, SOCK_STREAM, 0);
-	if (_csock == INVALID_SOCKET)
+	SOCKET _sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (_sock == INVALID_SOCKET)
 		printf("建立Socket失败\n");
 	else
 	{
@@ -27,7 +27,7 @@ int main()
 	_sin.sin_family = AF_INET;
 	_sin.sin_port = htons(4567);
 	_sin.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
-	int net = connect(_csock, (sockaddr*)&_sin, sizeof(sockaddr_in));
+	int net = connect(_sock, (sockaddr*)&_sin, sizeof(sockaddr_in));
 	if (net == INVALID_SOCKET)
 	{
 		printf("ERROR 连接失败！\n");
@@ -36,15 +36,27 @@ int main()
 	{
 		printf("连接成功\n");
 	}
-	//  3.接受服务器信息 revc
-	char recBuf[256] = {};
-	int nlen = recv(_csock, recBuf, 256, 0);
-	if (nlen > 0)
+	
+	while (true)
 	{
-		printf("接收到数据:%s\n", recBuf);
+		char sendBuf[256] = {};
+		scanf("%s", sendBuf);
+		if (strcmp(sendBuf, "exit") == 0)
+			break;
+		else
+		{
+			send(_sock, sendBuf, strlen(sendBuf) + 1, 0);
+		}
+		//  3.接受服务器信息 revc
+		char recBuf[256] = {};
+		int nlen = recv(_sock, recBuf, 256, 0);
+		if (nlen > 0)
+		{
+			printf("接收到数据:%s\n", recBuf);
+		}
 	}
 	//  4.关闭socket closesocket
-	closesocket(_csock);
+	closesocket(_sock);
 	//----------------
 	//清除windows socket环境
 	WSACleanup();

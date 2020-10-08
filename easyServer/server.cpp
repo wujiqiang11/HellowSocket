@@ -39,25 +39,52 @@ int main()
 	sockaddr_in clientAdd = {};
 	int AddLen = sizeof(sockaddr_in);
 	SOCKET _csock = INVALID_SOCKET;
-	char msgbuf[] = "Helow, I`m server!";
+	
+	_csock = accept(_sock, (sockaddr*)&clientAdd, &AddLen);
+	if (_csock == INVALID_SOCKET)
+	{
+		printf("接收到无效 socket\n");
+	}
+	printf("新的客户端加入, IP = %s \n", inet_ntoa(clientAdd.sin_addr));
+
 	while (true)
 	{
-		_csock = accept(_sock, (sockaddr*)&clientAdd, &AddLen);
-		if (_csock == INVALID_SOCKET)
+		char recBuf[256] = {};
+		int recBufLen = recv(_csock, recBuf, 256, 0);
+		if (recBufLen <= 0)
 		{
-			printf("接收到无效 socket\n");
+			printf("客户端退出\n");
+			break;
 		}
-		printf("新的客户端加入, IP = %s \n", inet_ntoa(clientAdd.sin_addr));
-		//  5.send 向客户端发送一条数据
-		send(_csock, msgbuf, strlen(msgbuf) + 1, 0);
+		else
+		{
+			printf("接收到命令: %s\n", recBuf);
+		}
+
+		//  5.send 向客户端发送数据
+		if (strcmp(recBuf, "getName") == 0)
+		{
+			char msgbuf[] = "wujiqiang";
+			send(_csock, msgbuf, strlen(msgbuf) + 1, 0);
+		}
+		else if(strcmp(recBuf,"getNum") == 0)
+		{
+			char msgbuf[] = "20215020";
+			send(_csock, msgbuf, strlen(msgbuf) + 1, 0);
+		}
+		else
+		{
+			char msgbuf[] = "?????";
+			send(_csock, msgbuf, strlen(msgbuf) + 1, 0);
+		}
+		
 	}
-
-
 	//  6.关闭socket closesocket
 	closesocket(_sock);
 	//------------------
 	//清除windows socket环境
 	WSACleanup();
+	getchar();
 	return 0;
 
 }
