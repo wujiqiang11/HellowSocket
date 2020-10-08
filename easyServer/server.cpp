@@ -6,6 +6,13 @@
 #include <iostream>
 
 using namespace std;
+
+struct DataPkg
+{
+	int age;
+	char name[32];
+};
+
 int main()
 {
 	//启动windows socket 2.x环境
@@ -62,15 +69,10 @@ int main()
 		}
 
 		//  5.send 向客户端发送数据
-		if (strcmp(recBuf, "getName") == 0)
+		if (strcmp(recBuf, "getInfo") == 0)
 		{
-			char msgbuf[] = "wujiqiang";
-			send(_csock, msgbuf, strlen(msgbuf) + 1, 0);
-		}
-		else if(strcmp(recBuf,"getNum") == 0)
-		{
-			char msgbuf[] = "20215020";
-			send(_csock, msgbuf, strlen(msgbuf) + 1, 0);
+			DataPkg msgbuf =  { 18,"wujiqiang" };
+			send(_csock, (const char*)&msgbuf, sizeof(DataPkg), 0);
 		}
 		else
 		{

@@ -6,6 +6,13 @@
 #include <iostream>
 
 using namespace std;
+
+struct DataPkg
+{
+	int age;
+	char name[32];
+};
+
 int main()
 {
 	//启动windows socket 2.x环境
@@ -52,7 +59,8 @@ int main()
 		int nlen = recv(_sock, recBuf, 256, 0);
 		if (nlen > 0)
 		{
-			printf("接收到数据:%s\n", recBuf);
+			DataPkg* rec = (DataPkg*)recBuf;
+			printf("接收到数据: 姓名：%s, 年龄：%d\n", rec->name,rec->age);
 		}
 	}
 	//  4.关闭socket closesocket
