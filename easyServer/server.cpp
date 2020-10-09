@@ -9,7 +9,9 @@ using namespace std;
 enum CMD
 {
 	CMD_LOGIN,
+	CMD_LOGINRE,
 	CMD_LOGOUT,
+	CMD_LOGOUTRE,
 	CMD_ERROR
 };
 struct pkgHeader
@@ -18,25 +20,43 @@ struct pkgHeader
 	CMD cmd;
 };
 
-struct LoginData
+struct LoginData :public pkgHeader
 {
+	LoginData()
+	{
+		pkgLen = sizeof(LoginData);
+		cmd = CMD_LOGIN;
+	}
 	char userName[32];
 	char userWord[32];
 };
-struct LoginResult
+struct LoginResult :public pkgHeader
 {
+	LoginResult()
+	{
+		pkgLen = sizeof(LoginResult);
+		cmd = CMD_LOGINRE;
+	}
 	int result;
 };
-struct LogOutData
+struct LogOutData :public pkgHeader
 {
+	LogOutData()
+	{
+		pkgLen = sizeof(LogOutData);
+		cmd = CMD_LOGOUT;
+	}
 	char userName[32];
 };
-struct LogOutResult
+struct LogOutResult :public pkgHeader
 {
+	LogOutResult()
+	{
+		pkgLen = sizeof(LogOutResult);
+		cmd = CMD_LOGOUTRE;
+	}
 	int result;
 };
-
-
 int main()
 {
 	//启动windows socket 2.x环境
@@ -80,8 +100,9 @@ int main()
 
 	while (true)
 	{
-		pkgHeader recHeader = {};
-		int recBufLen = recv(_csock, (char*)&recHeader, sizeof(pkgHeader), 0);  //接收消息包头
+		char recBuf[1024];  //接收缓存区
+		pkgHeader* recHeader;
+		int recBufLen = recv(_csock, recBuf, sizeof(pkgHeader), 0);  //接收消息包头
 		if (recBufLen <= 0)
 		{
 			printf("客户端退出\n");
@@ -89,40 +110,34 @@ int main()
 		}
 		else
 		{
-			printf("接收到包头: 长度：%d,类型：%d\n", recHeader.pkgLen,recHeader.cmd);
+			recHeader = (pkgHeader*)recBuf;
+			printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen,recHeader->cmd);
 		}
-		switch (recHeader.cmd)  //查看包头的命令类型
+		switch (recHeader->cmd)  //查看包头的命令类型
 		{
 			case(CMD_LOGIN):
 			{
-				LoginData recLoginData = {};
-				recBufLen = recv(_csock, (char*)&recLoginData, sizeof(LoginData), 0);
+				recBufLen = recv(_csock, recBuf+sizeof(pkgHeader), sizeof(LoginData)-sizeof(pkgHeader), 0);
+				LoginData* loginMse = (LoginData*)recBuf;
 				if (recBufLen > 0)
 				{
-					printf("接收到登录信息,用户名：%s, 密码：%s\n", recLoginData.userName, recLoginData.userWord);
-					
-					LoginResult sendLoginRe = { 202 };
-					pkgHeader header = {};
-					header.cmd = CMD_LOGIN;
-					header.pkgLen = 0;
-					send(_csock, (const char*)&header, sizeof(pkgHeader), 0);
-					send(_csock, (const char*)&sendLoginRe, sizeof(LoginResult), 0);
+					printf("接收到登录信息,用户名：%s, 密码：%s\n", loginMse->userName, loginMse->userWord);
+					LoginResult loginReMse;
+					loginReMse.result = 202;
+					send(_csock, (const char*)&loginReMse, sizeof(LoginResult), 0);
 				}
 			}
 				break;
 			case(CMD_LOGOUT):
 			{
-				LogOutData recLogOutData = {};
-				recBufLen = recv(_csock, (char*)&recLogOutData, sizeof(LogOutData), 0);
+				recBufLen = recv(_csock, recBuf + sizeof(pkgHeader), sizeof(LogOutData) - sizeof(pkgHeader), 0);
+				LogOutData* logoutMse = (LogOutData*)recBuf;
 				if (recBufLen > 0)
 				{
-					printf("接收到退出登录信息，用户名:  %s\n", recLogOutData.userName);
-					pkgHeader header = {};
-					header.cmd = CMD_LOGOUT;
-					header.pkgLen = 0;
-					LogOutResult  sendLoginOutRe = { 202 };
-					send(_csock, (const char*)&header, sizeof(pkgHeader), 0);
-					send(_csock, (const  char*)&sendLoginOutRe, sizeof(LogOutResult), 0);
+					printf("接收到登出信息,用户名：%s\n", logoutMse->userName);
+					LogOutResult logoutReMse;
+					logoutReMse.result = 202;
+					send(_csock, (const char*)&logoutReMse, sizeof(LogOutResult), 0);
 				}
 			}
 				break;

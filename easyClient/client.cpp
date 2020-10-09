@@ -10,7 +10,9 @@ using namespace std;
 enum CMD
 {
 	CMD_LOGIN,
+	CMD_LOGINRE,
 	CMD_LOGOUT,
+	CMD_LOGOUTRE,
 	CMD_ERROR
 };
 struct pkgHeader
@@ -19,21 +21,41 @@ struct pkgHeader
 	CMD cmd;
 };
 
-struct LoginData
+struct LoginData :public pkgHeader
 {
+	LoginData()
+	{
+		pkgLen = sizeof(LoginData);
+		cmd = CMD_LOGIN;
+	}
 	char userName[32];
 	char userWord[32];
 };
-struct LoginResult
+struct LoginResult :public pkgHeader
 {
+	LoginResult()
+	{
+		pkgLen = sizeof(LoginResult);
+		cmd = CMD_LOGINRE;
+	}
 	int result;
 };
-struct LogOutData
+struct LogOutData :public pkgHeader
 {
+	LogOutData()
+	{
+		pkgLen = sizeof(LogOutData);
+		cmd = CMD_LOGOUT;
+	}
 	char userName[32];
 };
-struct LogOutResult
+struct LogOutResult :public pkgHeader
 {
+	LogOutResult()
+	{
+		pkgLen = sizeof(LogOutResult);
+		cmd = CMD_LOGOUTRE;
+	}
 	int result;
 };
 
@@ -76,23 +98,15 @@ int main()
 			break;
 		else if (strcmp(client_cmd, "login") == 0)
 		{
-			LoginData login = {};
+			LoginData loginMse;
 			printf("输入你的用户名: ");
-			scanf("%s", login.userName);
+			scanf("%s", loginMse.userName);
 			printf("输入你的密码:");
-			scanf("%s", login.userWord);
+			scanf("%s", loginMse.userWord);
+			send(_sock, (const char*)&loginMse, sizeof(LoginData), 0);
 
-			pkgHeader header = {};
-			header.cmd = CMD_LOGIN;
-			header.pkgLen = sizeof(LoginData);
-
-			send(_sock, (const char*)&header, sizeof(pkgHeader), 0);
-			send(_sock, (const char*)&login, sizeof(LoginData), 0);
-
-			LoginResult result = {};
-			int recBufLen = recv(_sock, (char*)&header, sizeof(pkgHeader), 0);
-			recBufLen = recv(_sock, (char*)&result, sizeof(LoginResult), 0);
-
+			LoginResult result;
+			int recBufLen = recv(_sock, (char*)&result, sizeof(LoginResult), 0);
 			if (result.result == 202)
 			{
 				printf("登陆成功!\n");
@@ -100,21 +114,13 @@ int main()
 		}
 		else if (strcmp(client_cmd, "logout") == 0)
 		{
-			LogOutData logout = {};
+			LogOutData logoutMse;
 			printf("输入你的用户名: ");
-			scanf("%s", logout.userName);
-
-
-			pkgHeader header = {};
-			header.cmd = CMD_LOGOUT;
-			header.pkgLen = sizeof(LogOutData);
-
-			send(_sock, (const char*)&header, sizeof(pkgHeader), 0);
-			send(_sock, (const char*)&logout, sizeof(LogOutData), 0);
+			scanf("%s", logoutMse.userName);
+			send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
 
 			LogOutResult result = {};
-			int recBufLen = recv(_sock, (char*)&header, sizeof(pkgHeader), 0);
-			recBufLen = recv(_sock, (char*)&result, sizeof(LogOutResult), 0);
+			int recBufLen = recv(_sock, (char*)&result, sizeof(LogOutResult), 0);
 
 			if (result.result == 202)
 			{
