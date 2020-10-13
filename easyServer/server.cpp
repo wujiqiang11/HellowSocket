@@ -148,7 +148,7 @@ int main()
 
 	while (true)
 	{
-		
+
 		FD_ZERO(&fdRead);
 		FD_ZERO(&fdWrite);
 		FD_ZERO(&fdExp);
@@ -157,13 +157,14 @@ int main()
 		FD_SET(_sock, &fdWrite);
 		FD_SET(_sock, &fdExp);
 
-		for (int n = (int)g_clients.size()-1; n >= 0; n--)
+		for (int n = (int)g_clients.size() - 1; n >= 0; n--)
 		{
 			FD_SET(g_clients[n], &fdRead);
 		}
 
 		//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
-		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, NULL);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
+		timeval t = { 0,0 };
+		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
 		if (ret < 0)
 		{
 			printf("select 任务结束.\n");
