@@ -142,14 +142,13 @@ int main()
 		printf("监听网络端口成功\n");
 	}
 	
-	
+	fd_set fdRead;
+	fd_set fdWrite;
+	fd_set fdExp;
 
 	while (true)
 	{
-		fd_set fdRead;
-		fd_set fdWrite;
-		fd_set fdExp;
-
+		
 		FD_ZERO(&fdRead);
 		FD_ZERO(&fdWrite);
 		FD_ZERO(&fdExp);
@@ -160,7 +159,6 @@ int main()
 
 		for (int n = (int)g_clients.size()-1; n >= 0; n--)
 		{
-			cout << n << endl;
 			FD_SET(g_clients[n], &fdRead);
 		}
 
@@ -185,23 +183,21 @@ int main()
 			}
 			g_clients.push_back(_csock);
 			printf("新的客户端加入, IP = %s \n", inet_ntoa(clientAdd.sin_addr));
-
-			for (int i = 0; i < fdRead.fd_count; i++)
-			{
-				if (process(fdRead.fd_array[i]) == -1)
-				{
-					auto iter = find(g_clients.begin(), g_clients.end(), fdRead.fd_array[i]);
-					if (iter != g_clients.end())
-					{
-						g_clients.erase(iter);
-					}
-					printf("客户端退出.\n");
-					
-				}
-			}
-
 		}
 
+		for (int i = 0; i < fdRead.fd_count; i++)
+		{
+			if (process(fdRead.fd_array[i]) == -1)
+			{
+				auto iter = find(g_clients.begin(), g_clients.end(), fdRead.fd_array[i]);
+				if (iter != g_clients.end())
+				{
+					g_clients.erase(iter);
+				}
+				printf("客户端退出.\n");
+					
+			}
+		}
 	}
 
 	for (size_t n = 0; n < g_clients.size(); n++)
