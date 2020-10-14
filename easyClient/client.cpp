@@ -9,11 +9,13 @@ using namespace std;
 
 enum CMD
 {
-	CMD_LOGIN,
-	CMD_LOGINRE,
-	CMD_LOGOUT,
-	CMD_LOGOUTRE,
-	CMD_ERROR
+	CMD_LOGIN,  // 登录消息
+	CMD_LOGINRE,  // 登陆返回消息
+	CMD_LOGOUT,  // 登出消息
+	CMD_LOGOUTRE,  // 登出返回消息
+	CMD_ERROR,  //错误消息
+	CMD_LOGIN_BRO,  // 登录广播
+	CMD_LOGOUT_BRO,  // 登出广播
 };
 struct pkgHeader
 {
@@ -58,6 +60,81 @@ struct LogOutResult :public pkgHeader
 	}
 	int result;
 };
+struct LoginBro :public pkgHeader
+{
+	LoginBro()
+	{
+		pkgLen = sizeof(LoginBro);
+		cmd = CMD_LOGIN_BRO;
+	}
+	char userID[32];
+};
+struct LogoutBro :public pkgHeader
+{
+	LogoutBro()
+	{
+		pkgLen = sizeof(LogoutBro);
+		cmd == CMD_LOGOUT_BRO;
+	}
+	char userID[32];
+};
+
+int process(SOCKET  _sock)
+{
+	char recBuf[1024];  //接收缓存区
+	pkgHeader* recHeader;
+	int recBufLen = recv(_sock, recBuf, sizeof(pkgHeader), 0);  //接收消息包头
+	if (recBufLen <= 0)
+	{
+		return -1;
+	}
+	else
+	{
+		recHeader = (pkgHeader*)recBuf;
+		printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
+	}
+	switch (recHeader->cmd)  //查看包头的命令类型
+	{
+		case(CMD_LOGINRE):
+		{
+			
+			int recBufLen = recv(_sock, recBuf+sizeof(pkgHeader), sizeof(LoginResult)-sizeof(pkgHeader), 0);
+			LoginResult* loginResult=(LoginResult*)recBuf;
+			if (loginResult->result == 202)
+			{
+				printf("登陆成功!\n");
+			}
+		}
+			break;
+		case(CMD_LOGOUTRE):
+		{
+			int recBufLen = recv(_sock, recBuf + sizeof(pkgHeader), sizeof(LogOutResult) - sizeof(pkgHeader), 0);
+			LogOutResult* logoutResult = (LogOutResult*)recBuf;
+			if (logoutResult->result == 202)
+			{
+				printf("登出成功!\n");
+			}
+		}
+			break;
+		case(CMD_LOGIN_BRO):
+		{
+			int recBufLen = recv(_sock, recBuf + sizeof(pkgHeader), sizeof(LoginBro) - sizeof(pkgHeader), 0);
+			LoginBro* loginBro=(LoginBro*)recBuf;
+			printf("ID为 %s 的用户登录服务器!\n", loginBro->userID);
+		}
+			break;
+		case(CMD_LOGOUT_BRO):
+		{
+			int recBufLen = recv(_sock, recBuf + sizeof(pkgHeader), sizeof(LogoutBro) - sizeof(pkgHeader), 0);
+			LogoutBro* logoutBro = (LogoutBro*)recBuf;
+			printf("ID为 %s 的用户登出服务器!\n", logoutBro->userID);
+		}
+			break;
+		default:
+			break;
+	}
+	return 0;
+}
 
 int main()
 {
@@ -90,8 +167,29 @@ int main()
 		printf("连接成功\n");
 	}
 	
+	fd_set fdRead;
+
 	while (true)
 	{
+		
+		FD_ZERO(&fdRead);
+		FD_SET(_sock, &fdRead);
+
+
+		//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
+		timeval t = { 0,0 };
+		int ret = select(_sock + 1, &fdRead,NULL,NULL,&t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
+		if (ret < 0)
+		{
+			printf("select 任务结束.\n");
+			break;
+		}
+		if (FD_ISSET(_sock, &fdRead))
+		{
+			FD_CLR(_sock, &fdRead);
+			if(process(_sock)==-1)
+				printf("服务器断开连接\n");
+		}
 		char client_cmd[32] = {};
 		scanf("%s", client_cmd);
 		if (strcmp(client_cmd, "exit") == 0)
@@ -104,13 +202,9 @@ int main()
 			printf("输入你的密码:");
 			scanf("%s", loginMse.userWord);
 			send(_sock, (const char*)&loginMse, sizeof(LoginData), 0);
-
-			LoginResult result;
-			int recBufLen = recv(_sock, (char*)&result, sizeof(LoginResult), 0);
-			if (result.result == 202)
-			{
-				printf("登陆成功!\n");
-			}
+			if (process(_sock) == -1)
+				printf("服务器断开连接\n");
+			
 		}
 		else if (strcmp(client_cmd, "logout") == 0)
 		{
@@ -118,14 +212,9 @@ int main()
 			printf("输入你的用户名: ");
 			scanf("%s", logoutMse.userName);
 			send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
-
-			LogOutResult result = {};
-			int recBufLen = recv(_sock, (char*)&result, sizeof(LogOutResult), 0);
-
-			if (result.result == 202)
-			{
-				printf("登出成功!\n");
-			}
+			if (process(_sock) == -1)
+				printf("服务器断开连接\n");
+			
 		}
 		else
 			printf("无效命令，请重新输入！\n");

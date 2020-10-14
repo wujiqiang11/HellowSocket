@@ -9,11 +9,13 @@
 using namespace std;
 enum CMD
 {
-	CMD_LOGIN,
-	CMD_LOGINRE,
-	CMD_LOGOUT,
-	CMD_LOGOUTRE,
-	CMD_ERROR
+	CMD_LOGIN,  // 登录消息
+	CMD_LOGINRE,  // 登陆返回消息
+	CMD_LOGOUT,  // 登出消息
+	CMD_LOGOUTRE,  // 登出返回消息
+	CMD_ERROR,  //错误消息
+	CMD_LOGIN_BRO,  // 登录广播
+	CMD_LOGOUT_BRO,  // 登出广播
 };
 struct pkgHeader
 {
@@ -58,7 +60,24 @@ struct LogOutResult :public pkgHeader
 	}
 	int result;
 };
-
+struct LoginBro :public pkgHeader
+{
+	LoginBro()
+	{
+		pkgLen = sizeof(LoginBro);
+		cmd = CMD_LOGIN_BRO;
+	}
+	char userID[32];
+};
+struct LogoutBro :public pkgHeader
+{
+	LogoutBro()
+	{
+		pkgLen = sizeof(LogoutBro);
+		cmd == CMD_LOGOUT_BRO;
+	}
+	char userID[32];
+};
 std::vector<SOCKET> g_clients;
 
 int process(SOCKET  _csock)
@@ -88,6 +107,18 @@ int process(SOCKET  _csock)
 			loginReMse.result = 202;
 			send(_csock, (const char*)&loginReMse, sizeof(LoginResult), 0);
 		}
+
+		LoginBro loginBro;  //新用户登录广播消息
+		strcpy_s(loginBro.userID, loginMse->userName);
+		for (auto iter = g_clients.begin(); iter != g_clients.end(); iter++)
+		{
+			if (*iter == _csock)
+				break;
+			else
+			{
+				send(*iter, (const  char*)&loginBro, sizeof(LoginBro), 0);
+			}
+		}
 	}
 	break;
 	case(CMD_LOGOUT):
@@ -100,6 +131,18 @@ int process(SOCKET  _csock)
 			LogOutResult logoutReMse;
 			logoutReMse.result = 202;
 			send(_csock, (const char*)&logoutReMse, sizeof(LogOutResult), 0);
+		}
+
+		LogoutBro logoutBro;  //新用户登出广播消息
+		strcpy_s(logoutBro.userID, logoutMse->userName);
+		for (auto iter = g_clients.begin(); iter != g_clients.end(); iter++)
+		{
+			if (*iter == _csock)
+				break;
+			else
+			{
+				send(*iter, (const  char*)&logoutBro, sizeof(LogoutBro), 0);
+			}
 		}
 	}
 	break;
