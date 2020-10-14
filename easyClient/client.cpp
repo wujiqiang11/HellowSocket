@@ -4,7 +4,7 @@
 #include<Windows.h>
 #include<WinSock2.h>
 #include <iostream>
-
+#include<thread>
 using namespace std;
 
 enum CMD
@@ -91,7 +91,7 @@ int process(SOCKET  _sock)
 	else
 	{
 		recHeader = (pkgHeader*)recBuf;
-		printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
+		//printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
 	}
 	switch (recHeader->cmd)  //查看包头的命令类型
 	{
@@ -136,6 +136,40 @@ int process(SOCKET  _sock)
 	return 0;
 }
 
+bool keep_running = true;
+
+void cmd_thread(SOCKET _sock)  //输入线程
+{
+	while (true)
+	{
+		char client_cmd[32] = {};
+		scanf("%s", client_cmd);
+		if (strcmp(client_cmd, "exit") == 0)
+		{
+			keep_running = false;
+			break;
+		}
+		else if (strcmp(client_cmd, "login") == 0)
+		{
+			LoginData loginMse;
+			printf("输入你的用户名: ");
+			scanf("%s", loginMse.userName);
+			printf("输入你的密码:");
+			scanf("%s", loginMse.userWord);
+			send(_sock, (const char*)&loginMse, sizeof(LoginData), 0);
+
+		}
+		else if (strcmp(client_cmd, "logout") == 0)
+		{
+			LogOutData logoutMse;
+			printf("输入你的用户名: ");
+			scanf("%s", logoutMse.userName);
+			send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
+		}
+		else
+			printf("无效命令，请重新输入！\n");
+	}
+}
 int main()
 {
 	//启动windows socket 2.x环境
@@ -168,14 +202,13 @@ int main()
 	}
 	
 	fd_set fdRead;
+	std::thread t(cmd_thread, _sock);  //开一个输入线程
+	t.detach();
 
-	while (true)
+	while (keep_running)
 	{
-		
 		FD_ZERO(&fdRead);
 		FD_SET(_sock, &fdRead);
-
-
 		//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
 		timeval t = { 0,0 };
 		int ret = select(_sock + 1, &fdRead,NULL,NULL,&t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
@@ -187,37 +220,13 @@ int main()
 		if (FD_ISSET(_sock, &fdRead))
 		{
 			FD_CLR(_sock, &fdRead);
-			if(process(_sock)==-1)
-				printf("服务器断开连接\n");
-		}
-		char client_cmd[32] = {};
-		scanf("%s", client_cmd);
-		if (strcmp(client_cmd, "exit") == 0)
-			break;
-		else if (strcmp(client_cmd, "login") == 0)
-		{
-			LoginData loginMse;
-			printf("输入你的用户名: ");
-			scanf("%s", loginMse.userName);
-			printf("输入你的密码:");
-			scanf("%s", loginMse.userWord);
-			send(_sock, (const char*)&loginMse, sizeof(LoginData), 0);
 			if (process(_sock) == -1)
+			{
 				printf("服务器断开连接\n");
-			
+				break;
+			}
 		}
-		else if (strcmp(client_cmd, "logout") == 0)
-		{
-			LogOutData logoutMse;
-			printf("输入你的用户名: ");
-			scanf("%s", logoutMse.userName);
-			send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
-			if (process(_sock) == -1)
-				printf("服务器断开连接\n");
-			
-		}
-		else
-			printf("无效命令，请重新输入！\n");
+		
 	}
 	//  4.关闭socket closesocket
 	closesocket(_sock);

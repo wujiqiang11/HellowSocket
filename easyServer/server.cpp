@@ -92,7 +92,7 @@ int process(SOCKET  _csock)
 	else
 	{
 		recHeader = (pkgHeader*)recBuf;
-		printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
+		//printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
 	}
 	switch (recHeader->cmd)  //查看包头的命令类型
 	{
@@ -106,6 +106,7 @@ int process(SOCKET  _csock)
 			LoginResult loginReMse;
 			loginReMse.result = 202;
 			send(_csock, (const char*)&loginReMse, sizeof(LoginResult), 0);
+			//printf("发送登录返回\n");
 		}
 
 		LoginBro loginBro;  //新用户登录广播消息
@@ -113,9 +114,10 @@ int process(SOCKET  _csock)
 		for (auto iter = g_clients.begin(); iter != g_clients.end(); iter++)
 		{
 			if (*iter == _csock)
-				break;
+				continue;
 			else
 			{
+				//printf("发送登录广播\n");
 				send(*iter, (const  char*)&loginBro, sizeof(LoginBro), 0);
 			}
 		}
@@ -131,6 +133,7 @@ int process(SOCKET  _csock)
 			LogOutResult logoutReMse;
 			logoutReMse.result = 202;
 			send(_csock, (const char*)&logoutReMse, sizeof(LogOutResult), 0);
+			//printf("发送登出返回\n");
 		}
 
 		LogoutBro logoutBro;  //新用户登出广播消息
@@ -138,10 +141,11 @@ int process(SOCKET  _csock)
 		for (auto iter = g_clients.begin(); iter != g_clients.end(); iter++)
 		{
 			if (*iter == _csock)
-				break;
+				continue;
 			else
 			{
 				send(*iter, (const  char*)&logoutBro, sizeof(LogoutBro), 0);
+				//printf("发送登出广播\n");
 			}
 		}
 	}
@@ -151,6 +155,7 @@ int process(SOCKET  _csock)
 		header.cmd = CMD_ERROR;
 		header.pkgLen = 0;
 		send(_csock, (const char*)&header, sizeof(pkgHeader), 0);
+		printf("发送错误信息\n");
 		break;
 	}
 }
