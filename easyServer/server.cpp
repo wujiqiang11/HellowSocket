@@ -1,10 +1,21 @@
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
-#pragma comment(lib,"ws2_32.lib")
+#ifdef _WIN32
 #include<Windows.h>
 #include<WinSock2.h>
+#pragma comment(lib,"ws2_32.lib")
+#else
+#include<unistd.h>
+#include<arpa/inet.h>
+#include<string.h>
+#define SOCKET int
+#define INVALID_SOCKET  (SOCKET)(~0)
+#define SOCKET_ERROR            (-1)
+#endif
 #include <iostream>
+#include<thread>
 #include<vector>
+#include<string.h>
 
 using namespace std;
 enum CMD
@@ -15,7 +26,7 @@ enum CMD
 	CMD_LOGOUTRE,  // 登出返回消息
 	CMD_ERROR,  //错误消息
 	CMD_LOGIN_BRO,  // 登录广播
-	CMD_LOGOUT_BRO,  // 登出广播
+	CMD_LOGOUT_BRO  // 登出广播
 };
 struct pkgHeader
 {
@@ -74,7 +85,7 @@ struct LogoutBro :public pkgHeader
 	LogoutBro()
 	{
 		pkgLen = sizeof(LogoutBro);
-		cmd == CMD_LOGOUT_BRO;
+		cmd = CMD_LOGOUT_BRO;
 	}
 	char userID[32];
 };
@@ -96,85 +107,101 @@ int process(SOCKET  _csock)
 	}
 	switch (recHeader->cmd)  //查看包头的命令类型
 	{
-	case(CMD_LOGIN):
-	{
-		recBufLen = recv(_csock, recBuf + sizeof(pkgHeader), sizeof(LoginData) - sizeof(pkgHeader), 0);
-		LoginData* loginMse = (LoginData*)recBuf;
-		if (recBufLen > 0)
+		case(CMD_LOGIN):
 		{
-			printf("接收到登录信息,用户名：%s, 密码：%s\n", loginMse->userName, loginMse->userWord);
-			LoginResult loginReMse;
-			loginReMse.result = 202;
-			send(_csock, (const char*)&loginReMse, sizeof(LoginResult), 0);
-			//printf("发送登录返回\n");
-		}
-
-		LoginBro loginBro;  //新用户登录广播消息
-		strcpy_s(loginBro.userID, loginMse->userName);
-		for (auto iter = g_clients.begin(); iter != g_clients.end(); iter++)
-		{
-			if (*iter == _csock)
-				continue;
-			else
+			recBufLen = recv(_csock, recBuf + sizeof(pkgHeader), sizeof(LoginData) - sizeof(pkgHeader), 0);
+			LoginData* loginMse = (LoginData*)recBuf;
+			if (recBufLen > 0)
 			{
-				//printf("发送登录广播\n");
-				send(*iter, (const  char*)&loginBro, sizeof(LoginBro), 0);
+				printf("接收到登录信息,用户名：%s, 密码：%s\n", loginMse->userName, loginMse->userWord);
+				LoginResult loginReMse;
+				loginReMse.result = 202;
+				send(_csock, (const char*)&loginReMse, sizeof(LoginResult), 0);
+				//printf("发送登录返回\n");
+			}
+
+			LoginBro loginBro;  //新用户登录广播消息
+#ifdef _WIN32
+			strcpy_s(loginBro.userID, loginMse->userName);
+#else
+			strcpy(loginBro.userID, loginMse->userName);
+#endif
+			for (auto iter = g_clients.begin(); iter != g_clients.end(); iter++)
+			{
+				if (*iter == _csock)
+					continue;
+				else
+				{
+					//printf("发送登录广播\n");
+					send(*iter, (const  char*)&loginBro, sizeof(LoginBro), 0);
+				}
 			}
 		}
-	}
-	break;
-	case(CMD_LOGOUT):
-	{
-		recBufLen = recv(_csock, recBuf + sizeof(pkgHeader), sizeof(LogOutData) - sizeof(pkgHeader), 0);
-		LogOutData* logoutMse = (LogOutData*)recBuf;
-		if (recBufLen > 0)
-		{
-			printf("接收到登出信息,用户名：%s\n", logoutMse->userName);
-			LogOutResult logoutReMse;
-			logoutReMse.result = 202;
-			send(_csock, (const char*)&logoutReMse, sizeof(LogOutResult), 0);
-			//printf("发送登出返回\n");
-		}
-
-		LogoutBro logoutBro;  //新用户登出广播消息
-		strcpy_s(logoutBro.userID, logoutMse->userName);
-		for (auto iter = g_clients.begin(); iter != g_clients.end(); iter++)
-		{
-			if (*iter == _csock)
-				continue;
-			else
-			{
-				send(*iter, (const  char*)&logoutBro, sizeof(LogoutBro), 0);
-				//printf("发送登出广播\n");
-			}
-		}
-	}
-	break;
-	default:
-		pkgHeader header = {};
-		header.cmd = CMD_ERROR;
-		header.pkgLen = 0;
-		send(_csock, (const char*)&header, sizeof(pkgHeader), 0);
-		printf("发送错误信息\n");
 		break;
+		case(CMD_LOGOUT):
+		{
+			recBufLen = recv(_csock, recBuf + sizeof(pkgHeader), sizeof(LogOutData) - sizeof(pkgHeader), 0);
+			LogOutData* logoutMse = (LogOutData*)recBuf;
+			if (recBufLen > 0)
+			{
+				printf("接收到登出信息,用户名：%s\n", logoutMse->userName);
+				LogOutResult logoutReMse;
+				logoutReMse.result = 202;
+				send(_csock, (const char*)&logoutReMse, sizeof(LogOutResult), 0);
+				//printf("发送登出返回\n");
+			}
+
+			LogoutBro logoutBro;  //新用户登出广播消息
+#ifdef _WIN32
+			strcpy_s(logoutBro.userID, logoutMse->userName);
+#else
+			strcpy(logoutBro.userID, logoutMse->userName);
+#endif
+			for (auto iter = g_clients.begin(); iter != g_clients.end(); iter++)
+			{
+				if (*iter == _csock)
+					continue;
+				else
+				{
+					send(*iter, (const  char*)&logoutBro, sizeof(LogoutBro), 0);
+					printf("发送登出广播\n");
+				}
+			}
+		}
+		break;
+		default:
+			pkgHeader header = {};
+			header.cmd = CMD_ERROR;
+			header.pkgLen = 0;
+			send(_csock, (const char*)&header, sizeof(pkgHeader), 0);
+			printf("发送错误信息\n");
+			break;
 	}
+	return 0;
 }
 
 int main()
 {
+#ifdef _WIN32
 	//启动windows socket 2.x环境
 	WORD ver = MAKEWORD(2, 2);  // 算出版本号
 	WSADATA dat;
 	WSAStartup(ver, &dat);
+
+#endif
 	//----------------
 	//--- 使用socket API建立简易TCP服务端
 	//  1.建立一个socket
-	SOCKET _sock =socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	SOCKET _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	//  2.bind 绑定用于接受客户端连接的网络端口
 	sockaddr_in _sin = {};
 	_sin.sin_family = AF_INET;  //socket protocol
 	_sin.sin_port = htons(4567);  //host to net unsighned short
-	_sin.sin_addr.S_un.S_addr = INADDR_ANY;// inet_addr("127.0.0.1");
+#ifdef _WIN32
+	_sin.sin_addr.S_un.S_addr = INADDR_ANY;	// inet_addr("127.0.0.1");
+#else
+	_sin.sin_addr.s_addr = INADDR_ANY;	// inet_addr("127.0.0.1");
+#endif
 	if (SOCKET_ERROR == bind(_sock, (sockaddr*)&_sin, sizeof(_sin)))
 	{
 		printf("ERROR, 服务端绑定端口失败！\n");
@@ -189,7 +216,7 @@ int main()
 	{
 		printf("监听网络端口成功\n");
 	}
-	
+
 	fd_set fdRead;
 	fd_set fdWrite;
 	fd_set fdExp;
@@ -205,14 +232,20 @@ int main()
 		FD_SET(_sock, &fdWrite);
 		FD_SET(_sock, &fdExp);
 
+		SOCKET max_sock = _sock;
+
 		for (int n = (int)g_clients.size() - 1; n >= 0; n--)
 		{
 			FD_SET(g_clients[n], &fdRead);
+			if (g_clients[n] > max_sock)
+			{
+				max_sock = g_clients[n];
+			}
 		}
 
 		//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
 		timeval t = { 0,0 };
-		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
+		int ret = select(max_sock + 1, &fdRead, &fdWrite, &fdExp, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
 		if (ret < 0)
 		{
 			printf("select 任务结束.\n");
@@ -225,7 +258,11 @@ int main()
 			sockaddr_in clientAdd = {};
 			int AddLen = sizeof(sockaddr_in);
 			SOCKET _csock = INVALID_SOCKET;
+#ifdef _WIN32
 			_csock = accept(_sock, (sockaddr*)&clientAdd, &AddLen);
+#else
+			_csock = accept(_sock, (sockaddr*)&clientAdd, (socklen_t*)&AddLen);
+#endif
 			if (_csock == INVALID_SOCKET)
 			{
 				printf("接收到无效 socket\n");
@@ -233,7 +270,7 @@ int main()
 			g_clients.push_back(_csock);
 			printf("新的客户端加入, IP = %s \n", inet_ntoa(clientAdd.sin_addr));
 		}
-
+#ifdef _WIN32
 		for (int i = 0; i < fdRead.fd_count; i++)
 		{
 			if (process(fdRead.fd_array[i]) == -1)
@@ -244,11 +281,26 @@ int main()
 					g_clients.erase(iter);
 				}
 				printf("客户端退出.\n");
-					
+
 			}
 		}
-	}
+#else
+		for (size_t n = 0; n < g_clients.size(); n++)
+		{
+			if (FD_ISSET(g_clients[n], &fdRead))
+			{
+				if (process(g_clients[n]) == -1)
+				{
+					auto iter = g_clients.begin() + n;
+					g_clients.erase(iter);
+					printf("客户端退出.\n");
+				}
+			}
+		}
 
+#endif
+	}
+#ifdef _WIN32
 	for (size_t n = 0; n < g_clients.size(); n++)
 	{
 		closesocket(g_clients[n]);
@@ -259,6 +311,15 @@ int main()
 	//------------------
 	//清除windows socket环境
 	WSACleanup();
+#else
+	for (size_t n = 0; n < g_clients.size(); n++)
+	{
+		close(g_clients[n]);
+	}
+
+	//  6.关闭socket closesocket
+	close(_sock);
+#endif
 	getchar();
 	return 0;
 

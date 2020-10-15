@@ -101,7 +101,7 @@ int process(SOCKET  _sock)
 	else
 	{
 		recHeader = (pkgHeader*)recBuf;
-		//printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
+		printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
 	}
 	switch (recHeader->cmd)  //查看包头的命令类型
 	{
