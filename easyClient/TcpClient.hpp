@@ -43,7 +43,7 @@ public:
 	bool keep_running;
 private:
 	SOCKET _sock;
-	
+
 };
 
 TcpClient::TcpClient()
@@ -93,7 +93,7 @@ int TcpClient::Connect(const char* ip, unsigned short port)
 #ifdef _WIN32
 	_sin.sin_addr.S_un.S_addr = inet_addr(ip);
 #else
-	_sin.sin_addr.s_addr = inet_addr("ip");
+	_sin.sin_addr.s_addr = inet_addr(ip);
 #endif
 	int net = connect(_sock, (sockaddr*)&_sin, sizeof(sockaddr_in));
 	if (net == INVALID_SOCKET)
@@ -144,6 +144,7 @@ void TcpClient::KeepRun()
 			if (RecvData() == -1)
 			{
 				printf("Disconnect to server.\n");
+				keep_running = false;
 			}
 		}
 	}
@@ -167,7 +168,7 @@ int TcpClient::RecvData()
 	return 0;
 }
 
-void TcpClient::ResMse(pkgHeader * recHeader)
+void TcpClient::ResMse(pkgHeader* recHeader)
 {
 	switch (recHeader->cmd)  //查看包头的命令类型
 	{
@@ -183,7 +184,7 @@ void TcpClient::ResMse(pkgHeader * recHeader)
 	break;
 	case(CMD_LOGOUTRE):
 	{
-		
+
 		LogOutResult* logoutResult = (LogOutResult*)recHeader;
 		if (logoutResult->result == 202)
 		{

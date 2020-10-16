@@ -1,3 +1,7 @@
+#ifndef _MESSAGE_
+#define _MESSAGE_
+
+
 enum CMD
 {
 	CMD_LOGIN,  // µÇÂ¼ÏûÏ¢
@@ -65,7 +69,9 @@ struct LogoutBro :public pkgHeader
 	LogoutBro()
 	{
 		pkgLen = sizeof(LogoutBro);
-		cmd == CMD_LOGOUT_BRO;
+		cmd = CMD_LOGOUT_BRO;
 	}
 	char userID[32];
 };
+
+#endif // !_MESSAGE_
