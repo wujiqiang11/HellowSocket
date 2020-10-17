@@ -74,4 +74,14 @@ struct LogoutBro :public pkgHeader
 	char userID[32];
 };
 
+struct ErrorPkg :public pkgHeader
+{
+	ErrorPkg()
+	{
+		pkgLen = sizeof(ErrorPkg);
+		cmd = CMD_ERROR;
+	}
+	unsigned int error_code;
+};
+
 #endif // !_MESSAGE_
