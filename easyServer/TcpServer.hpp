@@ -35,6 +35,7 @@ public:
 	void WaitReq(int seconds);  //等待客户端请求
 	void otherServer();
 	bool keepRunning;
+	char recBuf[409600];  //接收缓存区
 	TestPkg testpkg;
 private:
 	std::vector<SOCKET> g_clients;
@@ -137,7 +138,7 @@ void MyServer::SendData(SOCKET _csock, pkgHeader* sendHeader)
 
 int MyServer::RecvData(SOCKET _csock)
 {
-	char recBuf[4096];  //接收缓存区
+	
 	int recBufLen = recv(_csock, recBuf, sizeof(pkgHeader), 0);  //接收消息包头
 	if (recBufLen <= 0)
 	{

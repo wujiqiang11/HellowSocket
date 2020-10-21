@@ -44,6 +44,7 @@ public:
 	std::thread RecvCMD();  //接收用户输入
 	bool keep_running;
 	TestPkg testpkg;
+	char recBuf[4096];  //接收缓存区
 private:
 	SOCKET _sock;
 
@@ -155,7 +156,7 @@ void TcpClient::KeepRun()
 
 int TcpClient::RecvData()
 {
-	char recBuf[4096];  //接收缓存区
+	
 	int recBufLen = recv(_sock, recBuf, sizeof(pkgHeader), 0);  //接收消息包头
 	if (recBufLen <= 0)
 	{
