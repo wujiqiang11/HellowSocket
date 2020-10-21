@@ -1,4 +1,4 @@
-#include"TcpServer.hpp"
+﻿#include"TcpServer.hpp"
 using namespace std;
 int main()
 {
@@ -6,7 +6,7 @@ int main()
 	while (server.keepRunning)
 	{
 		server.WaitReq(0);
-		server.otherServer();
+		//server.otherServer();
 	}
 
 	getchar();

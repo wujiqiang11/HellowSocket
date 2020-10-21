@@ -1,16 +1,17 @@
-#ifndef _MESSAGE_
+ï»¿#ifndef _MESSAGE_
 #define _MESSAGE_
 
 
 enum CMD
 {
-	CMD_LOGIN,  // µÇÂ¼ÏûÏ¢
-	CMD_LOGINRE,  // µÇÂ½·µ»ØÏûÏ¢
-	CMD_LOGOUT,  // µÇ³öÏûÏ¢
-	CMD_LOGOUTRE,  // µÇ³ö·µ»ØÏûÏ¢
-	CMD_ERROR,  //´íÎóÏûÏ¢
-	CMD_LOGIN_BRO,  // µÇÂ¼¹ã²¥
-	CMD_LOGOUT_BRO  // µÇ³ö¹ã²¥
+	CMD_LOGIN,  // ç™»å½•æ¶ˆæ¯
+	CMD_LOGINRE,  // ç™»é™†è¿”å›æ¶ˆæ¯
+	CMD_LOGOUT,  // ç™»å‡ºæ¶ˆæ¯
+	CMD_LOGOUTRE,  // ç™»å‡ºè¿”å›æ¶ˆæ¯
+	CMD_ERROR,  //é”™è¯¯æ¶ˆæ¯
+	CMD_LOGIN_BRO,  // ç™»å½•å¹¿æ’­
+	CMD_LOGOUT_BRO,  // ç™»å‡ºå¹¿æ’­
+	CMD_TEST
 };
 struct pkgHeader
 {
@@ -72,6 +73,26 @@ struct LogoutBro :public pkgHeader
 		cmd = CMD_LOGOUT_BRO;
 	}
 	char userID[32];
+};
+
+struct ErrorPkg :public pkgHeader
+{
+	ErrorPkg()
+	{
+		pkgLen = sizeof(ErrorPkg);
+		cmd = CMD_ERROR;
+	}
+	unsigned int error_code;
+};
+
+struct TestPkg :public pkgHeader
+{
+	TestPkg()
+	{
+		pkgLen = sizeof(TestPkg);
+		cmd = CMD_TEST;
+	}
+	char data[4096];
 };
 
 #endif // !_MESSAGE_

@@ -1,4 +1,4 @@
-#ifndef _TcpServer_
+ï»¿#ifndef _TcpServer_
 #define _TcpServer_
 
 #ifdef _WIN32
@@ -27,14 +27,15 @@ class MyServer
 public:
 	MyServer(const char* ip, unsigned short port);
 	virtual ~MyServer();
-	void InitServer(const char* ip, unsigned short port);  //³õÊ¼»¯·şÎñÆ÷(1. ½¨Á¢SOCKET 2.°ó¶¨¶Ë¿Ú 3.¿ªÊ¼¼àÌı)
-	void CloseSocket();  //¹Ø±ÕSOCKET
-	void SendData(SOCKET _csock, pkgHeader* sendHeader);  //·¢ËÍÊı¾İ°ü
-	int RecvData(SOCKET _csock);  //½ÓÊÜÊı¾İ°ü(²ğ°ü)
-	void ProcessReq(SOCKET _csock, pkgHeader* recHeader);  //´¦Àí¿Í»§¶ËÇëÇó
-	void WaitReq(int seconds);  //µÈ´ı¿Í»§¶ËÇëÇó
+	void InitServer(const char* ip, unsigned short port);  //åˆå§‹åŒ–æœåŠ¡å™¨(1. å»ºç«‹SOCKET 2.ç»‘å®šç«¯å£ 3.å¼€å§‹ç›‘å¬)
+	void CloseSocket();  //å…³é—­SOCKET
+	void SendData(SOCKET _csock, pkgHeader* sendHeader);  //å‘é€æ•°æ®åŒ…
+	int RecvData(SOCKET _csock);  //æ¥å—æ•°æ®åŒ…(æ‹†åŒ…)
+	void ProcessReq(SOCKET _csock, pkgHeader* recHeader);  //å¤„ç†å®¢æˆ·ç«¯è¯·æ±‚
+	void WaitReq(int seconds);  //ç­‰å¾…å®¢æˆ·ç«¯è¯·æ±‚
 	void otherServer();
 	bool keepRunning;
+	TestPkg testpkg;
 private:
 	std::vector<SOCKET> g_clients;
 	SOCKET _sock;
@@ -57,17 +58,17 @@ MyServer::~MyServer()
 void MyServer::InitServer(const char* ip, unsigned short port)
 {
 #ifdef _WIN32
-	//Æô¶¯windows socket 2.x»·¾³
-	WORD ver = MAKEWORD(2, 2);  // Ëã³ö°æ±¾ºÅ
+	//å¯åŠ¨windows socket 2.xç¯å¢ƒ
+	WORD ver = MAKEWORD(2, 2);  // ç®—å‡ºç‰ˆæœ¬å·
 	WSADATA dat;
 	WSAStartup(ver, &dat);
 
 #endif
 	//----------------
-	//--- Ê¹ÓÃsocket API½¨Á¢¼òÒ×TCP·şÎñ¶Ë
-	//  1.½¨Á¢Ò»¸ösocket
+	//--- ä½¿ç”¨socket APIå»ºç«‹ç®€æ˜“TCPæœåŠ¡ç«¯
+	//  1.å»ºç«‹ä¸€ä¸ªsocket
 	_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	//  2.bind °ó¶¨ÓÃÓÚ½ÓÊÜ¿Í»§¶ËÁ¬½ÓµÄÍøÂç¶Ë¿Ú
+	//  2.bind ç»‘å®šç”¨äºæ¥å—å®¢æˆ·ç«¯è¿æ¥çš„ç½‘ç»œç«¯å£
 	sockaddr_in _sin = {};
 	_sin.sin_family = AF_INET;  //socket protocol
 	_sin.sin_port = htons(port);  //host to net unsighned short
@@ -90,17 +91,17 @@ void MyServer::InitServer(const char* ip, unsigned short port)
 
 	if (SOCKET_ERROR == bind(_sock, (sockaddr*)&_sin, sizeof(_sin)))
 	{
-		printf("ERROR, ·şÎñ¶Ë°ó¶¨¶Ë¿ÚÊ§°Ü£¡\n");
+		printf("ERROR, æœåŠ¡ç«¯ç»‘å®šç«¯å£å¤±è´¥ï¼\n");
 	}
-	printf("·şÎñ¶Ë°ó¶¨¶Ë¿Ú³É¹¦£¡\n");
-	//  3.listen ¼àÌıÍøÂç¶Ë¿Ú
+	printf("æœåŠ¡ç«¯ç»‘å®šç«¯å£æˆåŠŸï¼\n");
+	//  3.listen ç›‘å¬ç½‘ç»œç«¯å£
 	if (SOCKET_ERROR == listen(_sock, 5))
 	{
-		printf("´íÎó£¬¼àÌıÍøÂç¶Ë¿ÚÊ§°Ü..\n");
+		printf("é”™è¯¯ï¼Œç›‘å¬ç½‘ç»œç«¯å£å¤±è´¥..\n");
 	}
 	else
 	{
-		printf("¼àÌıÍøÂç¶Ë¿Ú³É¹¦\n");
+		printf("ç›‘å¬ç½‘ç»œç«¯å£æˆåŠŸ\n");
 	}
 }
 
@@ -111,17 +112,17 @@ void MyServer::CloseSocket()
 	{
 		closesocket(g_clients[n]);
 	}
-	//  6.¹Ø±Õsocket closesocket
+	//  6.å…³é—­socket closesocket
 	closesocket(_sock);
 	//------------------
-	//Çå³ıwindows socket»·¾³
+	//æ¸…é™¤windows socketç¯å¢ƒ
 	WSACleanup();
 #else
 	for (size_t n = 0; n < g_clients.size(); n++)
 	{
 		close(g_clients[n]);
 	}
-	//  6.¹Ø±Õsocket closesocket
+	//  6.å…³é—­socket closesocket
 	close(_sock);
 #endif
 }
@@ -136,8 +137,8 @@ void MyServer::SendData(SOCKET _csock, pkgHeader* sendHeader)
 
 int MyServer::RecvData(SOCKET _csock)
 {
-	char recBuf[4096];  //½ÓÊÕ»º´æÇø
-	int recBufLen = recv(_csock, recBuf, sizeof(pkgHeader), 0);  //½ÓÊÕÏûÏ¢°üÍ·
+	char recBuf[4096];  //æ¥æ”¶ç¼“å­˜åŒº
+	int recBufLen = recv(_csock, recBuf, sizeof(pkgHeader), 0);  //æ¥æ”¶æ¶ˆæ¯åŒ…å¤´
 	if (recBufLen <= 0)
 	{
 		return -1;
@@ -145,7 +146,7 @@ int MyServer::RecvData(SOCKET _csock)
 	else
 	{
 		pkgHeader* recHeader = (pkgHeader*)recBuf;
-		printf("½ÓÊÕµ½°üÍ·: ³¤¶È£º%d,ÀàĞÍ£º%d\n", recHeader->pkgLen, recHeader->cmd);
+		printf("æ¥æ”¶åˆ°åŒ…å¤´: é•¿åº¦ï¼š%d,ç±»å‹ï¼š%d\n", recHeader->pkgLen, recHeader->cmd);
 		recv(_csock, recBuf + sizeof(pkgHeader), recHeader->pkgLen - sizeof(pkgHeader), 0);
 		ProcessReq(_csock, recHeader);
 	}
@@ -154,19 +155,19 @@ int MyServer::RecvData(SOCKET _csock)
 
 void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 {
-	switch (recHeader->cmd)  //²é¿´°üÍ·µÄÃüÁîÀàĞÍ
+	switch (recHeader->cmd)  //æŸ¥çœ‹åŒ…å¤´çš„å‘½ä»¤ç±»å‹
 	{
 	case(CMD_LOGIN):
 	{
 
 		LoginData* loginMse = (LoginData*)recHeader;
-		printf("½ÓÊÕµ½µÇÂ¼ĞÅÏ¢,ÓÃ»§Ãû£º%s, ÃÜÂë£º%s\n", loginMse->userName, loginMse->userWord);
+		printf("æ¥æ”¶åˆ°ç™»å½•ä¿¡æ¯,ç”¨æˆ·åï¼š%s, å¯†ç ï¼š%s\n", loginMse->userName, loginMse->userWord);
 		LoginResult loginReMse;
 		loginReMse.result = 202;
 		SendData(_csock, &loginReMse);
-		//printf("·¢ËÍµÇÂ¼·µ»Ø\n");
+		//printf("å‘é€ç™»å½•è¿”å›\n");
 
-		LoginBro loginBro;  //ĞÂÓÃ»§µÇÂ¼¹ã²¥ÏûÏ¢
+		LoginBro loginBro;  //æ–°ç”¨æˆ·ç™»å½•å¹¿æ’­æ¶ˆæ¯
 #ifdef _WIN32
 		strcpy_s(loginBro.userID, loginMse->userName);
 #else
@@ -178,7 +179,7 @@ void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 				continue;
 			else
 			{
-				//printf("·¢ËÍµÇÂ¼¹ã²¥\n");
+				//printf("å‘é€ç™»å½•å¹¿æ’­\n");
 				SendData(*iter, &loginBro);
 			}
 		}
@@ -188,14 +189,14 @@ void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 	{
 		
 		LogOutData* logoutMse = (LogOutData*)recHeader;
-		printf("½ÓÊÕµ½µÇ³öĞÅÏ¢,ÓÃ»§Ãû£º%s\n", logoutMse->userName);
+		printf("æ¥æ”¶åˆ°ç™»å‡ºä¿¡æ¯,ç”¨æˆ·åï¼š%s\n", logoutMse->userName);
 		LogOutResult logoutReMse;
 		logoutReMse.result = 202;
 		SendData(_csock, &logoutReMse);
-		//printf("·¢ËÍµÇ³ö·µ»Ø\n");
+		//printf("å‘é€ç™»å‡ºè¿”å›\n");
 
 
-		LogoutBro logoutBro;  //ĞÂÓÃ»§µÇ³ö¹ã²¥ÏûÏ¢
+		LogoutBro logoutBro;  //æ–°ç”¨æˆ·ç™»å‡ºå¹¿æ’­æ¶ˆæ¯
 #ifdef _WIN32
 		strcpy_s(logoutBro.userID, logoutMse->userName);
 #else
@@ -208,16 +209,20 @@ void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 			else
 			{
 				SendData(*iter, &logoutBro);
-				printf("·¢ËÍµÇ³ö¹ã²¥\n");
+				printf("å‘é€ç™»å‡ºå¹¿æ’­\n");
 			}
 		}
+	}
+	case(CMD_TEST):  //æµ‹è¯•ç²˜åŒ…
+	{
+		SendData(_csock, &testpkg);
 	}
 	break;
 	default:
 		ErrorPkg errorPkg;
 		errorPkg.error_code = 404;
 		SendData(_csock, &errorPkg);
-		printf("·¢ËÍ´íÎóĞÅÏ¢\n");
+		printf("å‘é€é”™è¯¯ä¿¡æ¯\n");
 		break;
 	}
 }
@@ -243,18 +248,18 @@ void MyServer::WaitReq(int seconds)
 		}
 	}
 
-	//nfds  ÊÇ¼¯ºÏfd_setÖĞ×îºóÒ»¸ösocketÃèÊö·û+1, ÓÃÒÔ±íÊ¾¼¯ºÏ·¶Î§
-	timeval t = { seconds,0 };
-	int ret = select(max_sock + 1, &fdRead, &fdWrite, &fdExp, &t);  //select½«¸üĞÂÕâ¸ö¼¯ºÏ,°ÑÆäÖĞ²»¿É¶Á(²»¿ÉĞ´)µÄÌ×½Ú×ÖÈ¥µô 
+	//nfds  æ˜¯é›†åˆfd_setä¸­æœ€åä¸€ä¸ªsocketæè¿°ç¬¦+1, ç”¨ä»¥è¡¨ç¤ºé›†åˆèŒƒå›´
+	timeval t = { 0,0 };
+	int ret = select(max_sock + 1, &fdRead, &fdWrite, &fdExp, &t);  //selectå°†æ›´æ–°è¿™ä¸ªé›†åˆ,æŠŠå…¶ä¸­ä¸å¯è¯»(ä¸å¯å†™)çš„å¥—èŠ‚å­—å»æ‰ 
 	if (ret < 0)
 	{
-		printf("select ÈÎÎñ½áÊø.\n");
+		printf("select ä»»åŠ¡ç»“æŸ.\n");
 		keepRunning = false;
 	}
-	if (FD_ISSET(_sock, &fdRead))  //²é¿´_sockÊÇ·ñ»¹ÓĞ¿É¶ÁÇëÇó
+	if (FD_ISSET(_sock, &fdRead))  //æŸ¥çœ‹_sockæ˜¯å¦è¿˜æœ‰å¯è¯»è¯·æ±‚
 	{
 		FD_CLR(_sock, &fdRead);
-		//  4.accept µÈ´ı½ÓÊÜ¿Í»§¶ËÁ¬½Ó
+		//  4.accept ç­‰å¾…æ¥å—å®¢æˆ·ç«¯è¿æ¥
 		sockaddr_in clientAdd = {};
 		int AddLen = sizeof(sockaddr_in);
 		SOCKET _csock = INVALID_SOCKET;
@@ -265,10 +270,10 @@ void MyServer::WaitReq(int seconds)
 #endif
 		if (_csock == INVALID_SOCKET)
 		{
-			printf("½ÓÊÕµ½ÎŞĞ§ socket\n");
+			printf("æ¥æ”¶åˆ°æ— æ•ˆ socket\n");
 		}
 		g_clients.push_back(_csock);
-		printf("ĞÂµÄ¿Í»§¶Ë¼ÓÈë, IP = %s \n", inet_ntoa(clientAdd.sin_addr));
+		printf("æ–°çš„å®¢æˆ·ç«¯åŠ å…¥, IP = %s \n", inet_ntoa(clientAdd.sin_addr));
 	}
 	for (size_t n = 0; n < g_clients.size(); n++)
 	{
@@ -278,7 +283,7 @@ void MyServer::WaitReq(int seconds)
 			{
 				auto iter = g_clients.begin() + n;
 				g_clients.erase(iter);
-				printf("¿Í»§¶ËÍË³ö.\n");
+				printf("å®¢æˆ·ç«¯é€€å‡º.\n");
 			}
 		}
 	}
@@ -287,6 +292,6 @@ void MyServer::WaitReq(int seconds)
 void MyServer::otherServer()
 {
 	Sleep(0.5 * 1000);
-	printf("ÆäËû·şÎñ½øĞĞÖĞ\n");
+	printf("å…¶ä»–æœåŠ¡è¿›è¡Œä¸­\n");
 }
 #endif // _TcpServer_

@@ -39,8 +39,11 @@ public:
 	void ResMse(pkgHeader* recHeader);
 	//业务层面处理用户命令
 	void ProcessCMD();
+	//发送测试数据包
+	void SendTest();
 	std::thread RecvCMD();  //接收用户输入
 	bool keep_running;
+	TestPkg testpkg;
 private:
 	SOCKET _sock;
 
@@ -247,6 +250,15 @@ void TcpClient::ProcessCMD()
 			SendData(&logoutMse);
 			//send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
 		}
+		else if (strcmp(client_cmd, "test") == 0)
+		{
+			while (true)
+			{
+				SendData(&testpkg);
+			}
+			//send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
+		}
+
 		else
 			printf("无效输入!\n");
 	}
@@ -258,4 +270,8 @@ std::thread TcpClient::RecvCMD()
 	return t;
 }
 
+void TcpClient::SendTest()
+{
+	SendData(&testpkg);
+}
 #endif // !_TcpClient_hpp_
