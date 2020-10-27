@@ -19,6 +19,7 @@
 #include <iostream>
 #include<thread>
 #include"Message.hpp"
+#define RECV_BUF_SIZE 20480  //第一接收缓存区的大小
 using namespace std;
 
 class TcpClient
@@ -46,17 +47,19 @@ public:
 	std::thread RecvCMD();  //接收用户输入
 	bool keep_running;
 	TestPkg testpkg;
-	char recBuf[409600] = {};  //接收缓存区
-	
+	char recBuf[RECV_BUF_SIZE] = {};  //第一接收缓存区
+	char recMesBuf[RECV_BUF_SIZE * 10] = {};  //第二接收缓存区
+	int LastPos_MesBuf;  //第二接收缓存区数据的尾部位置
 private:
 	SOCKET _sock;
-
+	
 };
 
 TcpClient::TcpClient()
 {
 	_sock = INVALID_SOCKET;
 	keep_running = true;
+	LastPos_MesBuf = 0;
 	InitSocket();
 }
 
@@ -148,8 +151,8 @@ void TcpClient::KeepRun()
 		if (FD_ISSET(_sock, &fdRead))
 		{
 			FD_CLR(_sock, &fdRead);
-			//if (RecvData() == -1)
-			if (RecvTestData() == -1)
+			if (RecvData() == -1)
+			//if (RecvTestData() == -1)
 			{
 				printf("Disconnect to server.\n");
 				keep_running = false;
@@ -160,8 +163,38 @@ void TcpClient::KeepRun()
 
 int TcpClient::RecvData()
 {
-	
-	int recBufLen = recv(_sock, recBuf, sizeof(pkgHeader), 0);  //接收消息包头
+
+	int recBufLen = (int)recv(_sock, recBuf, RECV_BUF_SIZE, 0);  //将接收到的数据一次装入第一缓冲区
+	if (recBufLen <= 0)
+	{
+		return -1;
+	}
+	else
+	{
+		memcpy(recMesBuf + LastPos_MesBuf, recBuf, recBufLen);
+		LastPos_MesBuf += recBufLen;
+		while (LastPos_MesBuf >= sizeof(pkgHeader))  //若第二缓冲区的数据长度大于一个包头部长度，则接收该头部
+		{
+			pkgHeader* recHeader = (pkgHeader*)recMesBuf;
+			printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
+			//若第二缓冲区数据长度大于接收包的长度，则处理这个包，否则说明接收到的数据包不完整
+			if (LastPos_MesBuf >= recHeader->pkgLen)
+			{
+				ResMse(recHeader);
+				int _unproLen = LastPos_MesBuf - recHeader->pkgLen;  //未处理的数据长度
+				int _proLen = recHeader->pkgLen;  //当前正在处理的数据长度
+				memcpy(recMesBuf, recMesBuf + _proLen, _unproLen);
+				LastPos_MesBuf = LastPos_MesBuf - recHeader->pkgLen;
+			}
+			else
+			{
+				break;
+				printf("break.\n");
+			}
+		}
+		return 0;
+	}
+	/*
 	if (recBufLen <= 0)
 	{
 		return -1;
@@ -174,6 +207,7 @@ int TcpClient::RecvData()
 		ResMse(recHeader);
 	}
 	return 0;
+	*/
 }
 
 
@@ -229,7 +263,13 @@ void TcpClient::ResMse(pkgHeader* recHeader)
 		printf("ID为 %s 的用户登出服务器!\n", logoutBro->userID);
 	}
 	break;
+	case(CMD_TEST):
+	{
+		printf("接收到测试数据包!\n");
+		break;
+	}
 	default:
+		printf("接收到无效消息\n");
 		break;
 	}
 }
@@ -273,10 +313,12 @@ void TcpClient::ProcessCMD()
 			//send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
 		}
 		else if (strcmp(client_cmd, "test") == 0)
-		{
+		{	
+			int sum = 0;
 			while (true)
 			{
 				SendData(&testpkg);
+				//printf("发送测试数据包 %d\n",++sum);
 			}
 			//send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
 		}
