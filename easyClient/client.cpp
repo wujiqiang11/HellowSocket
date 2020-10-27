@@ -7,7 +7,7 @@ int main()
 {
 
 	TcpClient client;
-	client.Connect("127.0.0.1",4567);
+	client.Connect("172.18.166.60",4567);
 	std::thread t=client.RecvCMD();  //开一个输入线程
 	t.detach();
 	while (client.keep_running)

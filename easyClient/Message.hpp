@@ -92,7 +92,7 @@ struct TestPkg :public pkgHeader
 		pkgLen = sizeof(TestPkg);
 		cmd = CMD_TEST;
 	}
-	char data[4096];
+	char data[256];
 };
 
 #endif // !_MESSAGE_

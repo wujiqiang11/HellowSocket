@@ -33,6 +33,8 @@ public:
 	void SendData(pkgHeader* sendHeader);
 	//接受数据包
 	int RecvData();
+	//接受测试数据包
+	int RecvTestData();
 	//select 接受网络请求消息
 	void KeepRun();
 	//业务层面接收网络消息
@@ -44,7 +46,8 @@ public:
 	std::thread RecvCMD();  //接收用户输入
 	bool keep_running;
 	TestPkg testpkg;
-	char recBuf[4096];  //接收缓存区
+	char recBuf[409600] = {};  //接收缓存区
+	
 private:
 	SOCKET _sock;
 
@@ -145,7 +148,8 @@ void TcpClient::KeepRun()
 		if (FD_ISSET(_sock, &fdRead))
 		{
 			FD_CLR(_sock, &fdRead);
-			if (RecvData() == -1)
+			//if (RecvData() == -1)
+			if (RecvTestData() == -1)
 			{
 				printf("Disconnect to server.\n");
 				keep_running = false;
@@ -170,6 +174,23 @@ int TcpClient::RecvData()
 		ResMse(recHeader);
 	}
 	return 0;
+}
+
+
+int TcpClient::RecvTestData()
+{
+	int recBufLen = recv(_sock, recBuf, 409600, 0);  //接收消息包头
+	if (recBufLen <= 0)
+	{
+		return -1;
+	}
+	else
+	{
+		printf("接收到 %d 字节数据\n", recBufLen);
+		SendData(&testpkg);
+		return 0;
+	}
+
 }
 
 void TcpClient::ResMse(pkgHeader* recHeader)

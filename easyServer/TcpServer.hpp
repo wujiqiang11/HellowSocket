@@ -31,11 +31,12 @@ public:
 	void CloseSocket();  //关闭SOCKET
 	void SendData(SOCKET _csock, pkgHeader* sendHeader);  //发送数据包
 	int RecvData(SOCKET _csock);  //接受数据包(拆包)
+	int RecvTestData(SOCKET _csock);  //接受粘包测试数据包(拆包)
 	void ProcessReq(SOCKET _csock, pkgHeader* recHeader);  //处理客户端请求
 	void WaitReq(int seconds);  //等待客户端请求
 	void otherServer();
 	bool keepRunning;
-	char recBuf[409600];  //接收缓存区
+	char recBuf[409600] = {};  //接收缓存区
 	TestPkg testpkg;
 private:
 	std::vector<SOCKET> g_clients;
@@ -138,7 +139,7 @@ void MyServer::SendData(SOCKET _csock, pkgHeader* sendHeader)
 
 int MyServer::RecvData(SOCKET _csock)
 {
-	
+	//char recBuf[409600]={};  //接收缓存区
 	int recBufLen = recv(_csock, recBuf, sizeof(pkgHeader), 0);  //接收消息包头
 	if (recBufLen <= 0)
 	{
@@ -152,6 +153,23 @@ int MyServer::RecvData(SOCKET _csock)
 		ProcessReq(_csock, recHeader);
 	}
 	return 0;
+}
+
+int MyServer::RecvTestData(SOCKET _csock)
+{
+	int recBufLen = recv(_csock, recBuf, 409600, 0);  //接收消息包头
+	if (recBufLen <= 0)
+	{
+		return -1;
+	}
+	else
+	{
+		printf("接收到 %d 字节数据\n", recBufLen);
+		SendData(_csock, &testpkg);
+		return 0;
+	}
+
+
 }
 
 void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
@@ -188,7 +206,7 @@ void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 	break;
 	case(CMD_LOGOUT):
 	{
-		
+
 		LogOutData* logoutMse = (LogOutData*)recHeader;
 		printf("接收到登出信息,用户名：%s\n", logoutMse->userName);
 		LogOutResult logoutReMse;
@@ -280,7 +298,8 @@ void MyServer::WaitReq(int seconds)
 	{
 		if (FD_ISSET(g_clients[n], &fdRead))
 		{
-			if (RecvData(g_clients[n]) == -1)
+			//if (RecvData(g_clients[n]) == -1)
+			if (RecvTestData(g_clients[n]) == -1)
 			{
 				auto iter = g_clients.begin() + n;
 				g_clients.erase(iter);
@@ -292,7 +311,12 @@ void MyServer::WaitReq(int seconds)
 
 void MyServer::otherServer()
 {
-	Sleep(0.5 * 1000);
+	
+#ifdef _WIN32
+	Sleep(500);
+#else
+	sleep(0.5);
+#endif
 	printf("其他服务进行中\n");
 }
 #endif // _TcpServer_
