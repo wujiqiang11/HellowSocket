@@ -176,7 +176,7 @@ int TcpClient::RecvData()
 		while (LastPos_MesBuf >= sizeof(pkgHeader))  //若第二缓冲区的数据长度大于一个包头部长度，则接收该头部
 		{
 			pkgHeader* recHeader = (pkgHeader*)recMesBuf;
-			printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
+			//printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
 			//若第二缓冲区数据长度大于接收包的长度，则处理这个包，否则说明接收到的数据包不完整
 			if (LastPos_MesBuf >= recHeader->pkgLen)
 			{
@@ -265,7 +265,7 @@ void TcpClient::ResMse(pkgHeader* recHeader)
 	break;
 	case(CMD_TEST):
 	{
-		printf("接收到测试数据包!\n");
+		//printf("接收到测试数据包!\n");
 		break;
 	}
 	default:

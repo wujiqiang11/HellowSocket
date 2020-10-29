@@ -168,7 +168,11 @@ void MyServer::InitServer(const char* ip, unsigned short port)
 	{
 		printf("ERROR, 服务端绑定端口失败！\n");
 	}
-	printf("服务端绑定端口成功！\n");
+	else
+	{
+		printf("服务端绑定端口成功！\n");
+	}
+
 	//  3.listen 监听网络端口
 	if (SOCKET_ERROR == listen(_sock, 5))
 	{
@@ -221,7 +225,7 @@ int MyServer::RecvData(g_client* _client)
 		while (_client->getLastPos() >= sizeof(pkgHeader))
 		{
 			pkgHeader* recHeader = (pkgHeader*)_client->getMseBuf();
-			printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
+			//printf("接收到包头: 长度：%d,类型：%d\n", recHeader->pkgLen, recHeader->cmd);
 			//若第二缓冲区数据长度大于接收包的长度，则处理这个包，否则说明接收到的数据包不完整
 			if (_client->getLastPos() >= recHeader->pkgLen)
 			{
@@ -318,7 +322,7 @@ void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 	}
 	case(CMD_TEST):  //测试粘包
 	{
-		printf("返回测试数据包\n");
+		//printf("返回测试数据包\n");
 		SendData(_csock, &testpkg);
 		break;
 	}
@@ -389,10 +393,11 @@ void MyServer::WaitReq(int seconds)
 			if (RecvData(g_clients[n]) == -1)
 				//if (RecvTestData(g_clients[n]) == -1)
 			{
+				printf("客户端退出.\n");
 				auto iter = g_clients.begin() + n;
 				delete[](*iter);
 				g_clients.erase(iter);
-				printf("客户端退出.\n");
+
 			}
 		}
 	}
