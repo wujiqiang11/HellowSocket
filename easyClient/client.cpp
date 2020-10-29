@@ -28,8 +28,8 @@ int main()
 	for (int i = 0; i < client_num; i++)
 	{
 		client[i] = new TcpClient();
-		client[i]->Connect("172.18.166.60", 4567);
-		//client[i]->Connect("127.0.0.1", 4567);
+		//client[i]->Connect("172.18.166.60", 4567);
+		client[i]->Connect("127.0.0.1", 4567);
 	}
 	std::thread t(inputCMD);
 	t.detach();

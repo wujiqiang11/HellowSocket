@@ -2,6 +2,7 @@
 #define _TcpServer_
 
 #ifdef _WIN32
+#define FD_SETSIZE      6000
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #pragma comment(lib,"ws2_32.lib")
@@ -323,7 +324,7 @@ void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 	case(CMD_TEST):  //测试粘包
 	{
 		//printf("返回测试数据包\n");
-		SendData(_csock, &testpkg);
+		//SendData(_csock, &testpkg);
 		break;
 	}
 	default:
@@ -384,7 +385,7 @@ void MyServer::WaitReq(int seconds)
 		}
 		g_client* new_client = new g_client(csock);
 		g_clients.push_back(new_client);
-		printf("新的客户端加入, IP = %s \n", inet_ntoa(clientAdd.sin_addr));
+		printf("新的客户端加入, IP = %s ,SOCKET = %d ,当前客户端数量: %d\n", inet_ntoa(clientAdd.sin_addr), (int)csock, (int)g_clients.size());
 	}
 	for (size_t n = 0; n < g_clients.size(); n++)
 	{
