@@ -17,6 +17,7 @@
 #define INVALID_SOCKET  (SOCKET)(~0)
 #define SOCKET_ERROR            (-1)
 #endif
+#include"High_resolution_timer.hpp"
 #include <iostream>
 #include<thread>
 #include<vector>
@@ -112,6 +113,8 @@ public:
 	bool keepRunning;
 	char recBuf[RECV_BUF_SIZE] = {};  //接收缓存区
 	TestPkg testpkg;
+	MyTimer timer;  //高精度计时器
+	int recPkgNum;  //每秒接收数据包数量
 private:
 	std::vector<g_client*> g_clients;  //客户端类的vector
 	SOCKET _sock;
@@ -125,6 +128,7 @@ MyServer::MyServer(const char* ip, unsigned short port)
 	_sock = INVALID_SOCKET;
 	InitServer(ip, port);
 	keepRunning = true;
+	recPkgNum = 0;
 }
 
 MyServer::~MyServer()
@@ -261,6 +265,14 @@ int MyServer::RecvTestData(g_client* _client)
 
 void MyServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 {
+	recPkgNum++;
+	if (timer.GetSeconds() >= 1)
+	{
+		printf("seconds:%d, 当前客户端数量:%d, 每秒接收包数:%d\n",timer.GetSeconds(), g_clients.size(), recPkgNum);
+		timer.update();
+		recPkgNum = 0;
+	}
+
 	switch (recHeader->cmd)  //查看包头的命令类型
 	{
 	case(CMD_LOGIN):
