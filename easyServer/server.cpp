@@ -2,10 +2,10 @@
 using namespace std;
 int main()
 {
-	MyServer server(NULL, 4567);
+	MyServer server(NULL, 4567, 0);
 	while (server.keepRunning)
 	{
-		server.WaitReq(0);
+		server.WaitReq();
 		//server.otherServer();
 	}
 

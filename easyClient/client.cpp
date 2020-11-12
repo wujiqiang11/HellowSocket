@@ -20,7 +20,7 @@ void inputCMD()
 	}
 }
 
-const int client_num = 1000;
+const int client_num = 2000;
 TcpClient* client[client_num];
 int Thread_num = 4;  //客户端开启的发送线程数
 
