@@ -336,6 +336,7 @@ std::thread TcpClient::RecvCMD()
 
 void TcpClient::SendTest()
 {
-	SendData(&testpkg);
+	for(int i=0;i<10;i++)
+		SendData(&testpkg);
 }
 #endif // !_TcpClient_hpp_

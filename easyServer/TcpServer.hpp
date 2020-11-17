@@ -304,7 +304,7 @@ void CellServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 	case(CMD_TEST):  //测试粘包
 	{
 		//printf("返回测试数据包\n");
-		SendData(_csock, &testpkg);
+		//SendData(_csock, &testpkg);
 		break;
 	}
 	default:
