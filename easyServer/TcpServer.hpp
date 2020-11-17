@@ -2,7 +2,7 @@
 #define _TcpServer_
 
 #ifdef _WIN32
-#define FD_SETSIZE      6000
+#define FD_SETSIZE      10240
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #pragma comment(lib,"ws2_32.lib")
@@ -22,6 +22,7 @@
 #include<thread>
 #include<vector>
 #include<mutex>
+#include<algorithm>
 #include"Message.hpp"
 #ifndef RECV_BUF_SIZE
 #define RECV_BUF_SIZE 10240  //第一接收缓存区的大小
@@ -117,16 +118,21 @@ public:
 	void keep_server();
 	void start();
 	int get_clients_sum();  //取得当前服务的客户端数量
+	void update_clients_sum();
 private:
 	std::vector<g_client*> clients_pro;  //正在处理的客户端类的vector
 	std::vector<g_client*> clients_buf;  //缓冲区客户端类的vector
 	SOCKET _sock;
 	fd_set fdRead;
+	fd_set fdRead_cpy;
+	bool client_change;  //用于指示当前服务的客户端对象是否发生改变
 	TestPkg testpkg;
 	mutex m;
 	bool keepRunning;
 	std::thread* t;
 	int select_second;  //select查询时最大时间
+	int clients_sum;  //当前服务子进程所占有的客户端总数，包括缓冲区和正在服务的客户端
+	SOCKET max_sock;
 };
 
 CellServer::CellServer(int second)
@@ -134,6 +140,7 @@ CellServer::CellServer(int second)
 	select_second = second;
 	keepRunning = true;
 	recPkgNum = 0;
+	client_change = false;
 }
 
 CellServer::~CellServer()
@@ -320,7 +327,12 @@ void CellServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 
 int CellServer::get_clients_sum()
 {
-	return  clients_buf.size() + clients_pro.size();
+	return  clients_sum;
+}
+
+void CellServer::update_clients_sum()
+{
+	clients_sum = clients_buf.size() + clients_pro.size();
 }
 
 void CellServer::WaitReq()
@@ -332,18 +344,23 @@ void CellServer::WaitReq()
 	if (clients_buf.size() > 0)
 	{
 		client_buf_export();  //将客户端由中间缓冲区输出到处理队列
+		client_change = true;  //新的客户端加入
 	}
-	SOCKET max_sock = clients_pro[0]->sock;
-
-	for (int n = (int)clients_pro.size() - 1; n >= 0; n--)
+	if (client_change)
 	{
-		FD_SET(clients_pro[n]->sock, &fdRead);
-		if (clients_pro[n]->sock > max_sock)
+		max_sock = clients_pro[0]->sock;
+		FD_ZERO(&fdRead_cpy);
+		for (int n = (int)clients_pro.size() - 1; n >= 0; n--)
 		{
-			max_sock = clients_pro[n]->sock;
+			FD_SET(clients_pro[n]->sock, &fdRead_cpy);
+			if (clients_pro[n]->sock > max_sock)
+			{
+				max_sock = clients_pro[n]->sock;
+			}
 		}
 	}
-
+	memcpy(&fdRead, &fdRead_cpy, sizeof(fdRead));
+	client_change = false;
 	//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
 	timeval t = { select_second,0 };
 	int ret = select(max_sock + 1, &fdRead, NULL, NULL, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
@@ -364,10 +381,13 @@ void CellServer::WaitReq()
 				auto iter = clients_pro.begin() + n;
 				delete[](*iter);
 				clients_pro.erase(iter);
+				client_change = true;
+				update_clients_sum();
 
 			}
 		}
 	}
+
 }
 
 
@@ -451,6 +471,7 @@ void MyServer::add_ClientToCellServer(g_client* g)
 		}
 	}
 	(*min_cell_ser)->client_buf_import(g);
+	(*min_cell_ser)->update_clients_sum();
 }
 
 void MyServer::InitServer(const char* ip, unsigned short port)
@@ -525,42 +546,45 @@ void MyServer::CloseSocket()
 
 void MyServer::WaitReq()
 {
-	if (timer.GetSeconds() >= 1)
+	while (keepRunning)
 	{
-		printf("seconds:%d, 当前客户端数量:%d, 每秒接收包数:%d\n", timer.GetSeconds(), getClientsSum(), getPkgSum());
-		timer.update();
-	}
-
-	FD_SET(_sock, &fdRead);
-
-	SOCKET max_sock = _sock;
-	//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
-	timeval t = {select_seconds,0 };
-	int ret = select(max_sock + 1, &fdRead, NULL, NULL, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
-	if (ret < 0)
-	{
-		printf("select 任务结束.\n");
-		keepRunning = false;
-	}
-	if (FD_ISSET(_sock, &fdRead))  //查看_sock是否还有可读请求
-	{
-		FD_CLR(_sock, &fdRead);
-		//  4.accept 等待接受客户端连接
-		sockaddr_in clientAdd = {};
-		int AddLen = sizeof(sockaddr_in);
-		SOCKET csock = INVALID_SOCKET;
-#ifdef _WIN32
-		csock = accept(_sock, (sockaddr*)&clientAdd, &AddLen);
-#else
-		csock = accept(_sock, (sockaddr*)&clientAdd, (socklen_t*)&AddLen);
-#endif
-		if (csock == INVALID_SOCKET)
+		if (timer.GetSeconds() >= 1)
 		{
-			printf("接收到无效 socket\n");
+			printf("seconds:%d, 当前客户端数量:%d, 每秒接收包数:%d\n", timer.GetSeconds(), getClientsSum(), getPkgSum());
+			timer.update();
 		}
-		g_client* new_client = new g_client(csock);
-		add_ClientToCellServer(new_client);
-		//printf("新的客户端加入, IP = %s ,SOCKET = %d ,当前客户端数量: %d\n", inet_ntoa(clientAdd.sin_addr), (int)csock, getClientsSum());
+
+		FD_SET(_sock, &fdRead);
+
+		SOCKET max_sock = _sock;
+		//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
+		timeval t = {select_seconds,0 };
+		int ret = select(max_sock + 1, &fdRead, NULL, NULL, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
+		if (ret < 0)
+		{
+			printf("select 任务结束.\n");
+			keepRunning = false;
+		}
+		if (FD_ISSET(_sock, &fdRead))  //查看_sock是否还有可读请求
+		{
+			FD_CLR(_sock, &fdRead);
+			//  4.accept 等待接受客户端连接
+			sockaddr_in clientAdd = {};
+			int AddLen = sizeof(sockaddr_in);
+			SOCKET csock = INVALID_SOCKET;
+	#ifdef _WIN32
+			csock = accept(_sock, (sockaddr*)&clientAdd, &AddLen);
+	#else
+			csock = accept(_sock, (sockaddr*)&clientAdd, (socklen_t*)&AddLen);
+	#endif
+			if (csock == INVALID_SOCKET)
+			{
+				printf("接收到无效 socket\n");
+			}
+			g_client* new_client = new g_client(csock);
+			add_ClientToCellServer(new_client);
+			//printf("新的客户端加入, IP = %s ,SOCKET = %d ,当前客户端数量: %d\n", inet_ntoa(clientAdd.sin_addr), (int)csock, getClientsSum());
+		}
 	}
 
 }
