@@ -24,7 +24,7 @@
 #include<mutex>
 #include"Message.hpp"
 #ifndef RECV_BUF_SIZE
-#define RECV_BUF_SIZE 20480  //第一接收缓存区的大小
+#define RECV_BUF_SIZE 10240  //第一接收缓存区的大小
 #endif // !RECV_BUF_SIZE
 using namespace std;
 const int Cell_server_num = 4;  //服务子进程的数量
@@ -122,8 +122,6 @@ private:
 	std::vector<g_client*> clients_buf;  //缓冲区客户端类的vector
 	SOCKET _sock;
 	fd_set fdRead;
-	fd_set fdWrite;
-	fd_set fdExp;
 	TestPkg testpkg;
 	mutex m;
 	bool keepRunning;
@@ -306,7 +304,7 @@ void CellServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 	case(CMD_TEST):  //测试粘包
 	{
 		//printf("返回测试数据包\n");
-		//SendData(_csock, &testpkg);
+		SendData(_csock, &testpkg);
 		break;
 	}
 	default:
@@ -328,8 +326,6 @@ int CellServer::get_clients_sum()
 void CellServer::WaitReq()
 {
 	FD_ZERO(&fdRead);
-	FD_ZERO(&fdWrite);
-	FD_ZERO(&fdExp);
 
 	if (get_clients_sum() <= 0) //没有待处理的客户端
 		return;
@@ -350,7 +346,7 @@ void CellServer::WaitReq()
 
 	//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
 	timeval t = { select_second,0 };
-	int ret = select(max_sock + 1, &fdRead, &fdWrite, &fdExp, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
+	int ret = select(max_sock + 1, &fdRead, NULL, NULL, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
 	if (ret < 0)
 	{
 		printf("select 任务结束.\n");
@@ -364,7 +360,7 @@ void CellServer::WaitReq()
 			if (RecvData(clients_pro[n]) == -1)
 				//if (RecvTestData(g_clients[n]) == -1)
 			{
-				printf("客户端退出.\n");
+				//printf("客户端退出.\n");
 				auto iter = clients_pro.begin() + n;
 				delete[](*iter);
 				clients_pro.erase(iter);
@@ -393,8 +389,6 @@ private:
 	void CellServerInit();  //启动服务线程
 	void add_ClientToCellServer(g_client* g);  //将客户端分配给服务线程
 	fd_set fdRead;
-	fd_set fdWrite;
-	fd_set fdExp;
 	int select_seconds;
 	int getClientsSum();
 	int getPkgSum();  //返回所有服务子线程每秒接收数据包的数量和
@@ -542,7 +536,7 @@ void MyServer::WaitReq()
 	SOCKET max_sock = _sock;
 	//nfds  是集合fd_set中最后一个socket描述符+1, 用以表示集合范围
 	timeval t = {select_seconds,0 };
-	int ret = select(max_sock + 1, &fdRead, &fdWrite, &fdExp, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
+	int ret = select(max_sock + 1, &fdRead, NULL, NULL, &t);  //select将更新这个集合,把其中不可读(不可写)的套节字去掉 
 	if (ret < 0)
 	{
 		printf("select 任务结束.\n");
@@ -566,7 +560,7 @@ void MyServer::WaitReq()
 		}
 		g_client* new_client = new g_client(csock);
 		add_ClientToCellServer(new_client);
-		printf("新的客户端加入, IP = %s ,SOCKET = %d ,当前客户端数量: %d\n", inet_ntoa(clientAdd.sin_addr), (int)csock, getClientsSum());
+		//printf("新的客户端加入, IP = %s ,SOCKET = %d ,当前客户端数量: %d\n", inet_ntoa(clientAdd.sin_addr), (int)csock, getClientsSum());
 	}
 
 }

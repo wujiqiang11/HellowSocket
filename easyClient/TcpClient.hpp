@@ -19,7 +19,7 @@
 #include <iostream>
 #include<thread>
 #include"Message.hpp"
-#define RECV_BUF_SIZE 20480  //第一接收缓存区的大小
+#define RECV_BUF_SIZE 10240  //第一接收缓存区的大小
 using namespace std;
 
 class TcpClient

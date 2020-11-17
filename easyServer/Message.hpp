@@ -1,7 +1,7 @@
 ﻿#ifndef _MESSAGE_
 #define _MESSAGE_
 
-
+const int Test_size = 100;
 enum CMD
 {
 	CMD_LOGIN,  // 登录消息
@@ -92,7 +92,7 @@ struct TestPkg :public pkgHeader
 		pkgLen = sizeof(TestPkg);
 		cmd = CMD_TEST;
 	}
-	char data[4096];
+	char data[Test_size];
 };
 
 #endif // !_MESSAGE_
