@@ -20,6 +20,7 @@
 #include<thread>
 #include"Message.hpp"
 #define RECV_BUF_SIZE 10240  //第一接收缓存区的大小
+#define SEND_BUF_SIZE RECV_BUF_SIZE
 using namespace std;
 
 class TcpClient
@@ -49,7 +50,9 @@ public:
 	TestPkg testpkg;
 	char recBuf[RECV_BUF_SIZE] = {};  //第一接收缓存区
 	char recMesBuf[RECV_BUF_SIZE * 10] = {};  //第二接收缓存区
+	char sendBuf[SEND_BUF_SIZE] = {};  //发送缓存区
 	int LastPos_MesBuf;  //第二接收缓存区数据的尾部位置
+	int lastPos_SendBuf;  //发送缓存区的尾部位置
 	int getSendNum();
 private:
 	SOCKET _sock;
@@ -63,6 +66,7 @@ TcpClient::TcpClient()
 	LastPos_MesBuf = 0;
 	InitSocket();
 	sendNum = 0;
+	lastPos_SendBuf = 0;
 }
 
 TcpClient::~TcpClient()
@@ -287,8 +291,29 @@ void TcpClient::SendData(pkgHeader* sendHeader)
 {
 	if (_sock != INVALID_SOCKET)
 	{
-		send(_sock, (const char*)sendHeader, sendHeader->pkgLen, 0);
-		sendNum++;
+		int waitSendLen = sendHeader->pkgLen;  //等待发送的数据长度
+		int sendedLen = 0;  //已经发送的数据长度
+		const char* pHeader = (const  char*)sendHeader;
+		int validLen = SEND_BUF_SIZE - lastPos_SendBuf;  //现在可用的缓存区空间
+		while (true)
+		{
+			if (waitSendLen >= validLen)  //缓存区装不下待发送的数据
+			{
+				memcpy(sendBuf + lastPos_SendBuf, pHeader + sendedLen, validLen);
+				send(_sock, sendBuf, SEND_BUF_SIZE, 0);
+				sendNum++;
+				waitSendLen -= validLen;
+				sendedLen += validLen;
+				lastPos_SendBuf = 0;
+				validLen = SEND_BUF_SIZE - lastPos_SendBuf;
+			}
+			else  //缓存区可以装下待发送的数据
+			{
+				memcpy(sendBuf + lastPos_SendBuf, pHeader + sendedLen, waitSendLen);
+				lastPos_SendBuf += waitSendLen;
+				break;
+			}
+		}
 	}
 }
 
