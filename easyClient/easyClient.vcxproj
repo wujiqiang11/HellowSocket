@@ -150,6 +150,7 @@
     <ClCompile Include="client.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="High_resolution_timer.hpp" />
     <ClInclude Include="Message.hpp" />
     <ClInclude Include="TcpClient.hpp" />
   </ItemGroup>

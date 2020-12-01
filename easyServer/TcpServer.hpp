@@ -28,7 +28,7 @@
 #define RECV_BUF_SIZE 10240  //第一接收缓存区的大小
 #endif // !RECV_BUF_SIZE
 using namespace std;
-const int Cell_server_num = 4;  //服务子进程的数量
+const int Cell_server_num = 1;  //服务子进程的数量
 class g_client  //服务端中客户端管理类
 {
 public:
@@ -111,7 +111,8 @@ public:
 	int RecvTestData(g_client* _client);  //接受粘包测试数据包(拆包)
 	void ProcessReq(SOCKET _csock, pkgHeader* recHeader);  //处理客户端请求
 	void WaitReq();  //等待客户端请求
-	int recPkgNum;  //每秒接收数据包数量	
+	int recPkgNum;  //每秒接收数据包数量
+	int recvNum;  //每秒调用recv的数量
 	char recBuf[RECV_BUF_SIZE] = {};  //接收缓存区
 	void client_buf_import(g_client* g);
 	void client_buf_export();
@@ -133,6 +134,7 @@ private:
 	int select_second;  //select查询时最大时间
 	int clients_sum;  //当前服务子进程所占有的客户端总数，包括缓冲区和正在服务的客户端
 	SOCKET max_sock;
+
 };
 
 CellServer::CellServer(int second)
@@ -140,6 +142,7 @@ CellServer::CellServer(int second)
 	select_second = second;
 	keepRunning = true;
 	recPkgNum = 0;
+	recvNum = 0;
 	client_change = false;
 }
 
@@ -385,6 +388,10 @@ void CellServer::WaitReq()
 				update_clients_sum();
 
 			}
+			else 
+			{
+				recvNum++;
+			}
 		}
 	}
 
@@ -412,6 +419,7 @@ private:
 	int select_seconds;
 	int getClientsSum();
 	int getPkgSum();  //返回所有服务子线程每秒接收数据包的数量和
+	int getRecvSum();  //返回所有服务子线程每秒调用recv的数量和
 };
 
 MyServer::MyServer(const char* ip, unsigned short port, int select_s)
@@ -435,6 +443,18 @@ int MyServer::getPkgSum()
 	{
 		sum += (*iter)->recPkgNum;
 		(*iter)->recPkgNum=0;
+	}
+	return sum;
+
+}
+
+int MyServer::getRecvSum()
+{
+	int sum = 0;
+	for (auto iter = CellServerList.begin(); iter != CellServerList.end(); iter++)
+	{
+		sum += (*iter)->recvNum;
+		(*iter)->recvNum = 0;
 	}
 	return sum;
 
@@ -550,7 +570,7 @@ void MyServer::WaitReq()
 	{
 		if (timer.GetSeconds() >= 1)
 		{
-			printf("seconds:%d, 当前客户端数量:%d, 每秒接收包数:%d\n", timer.GetSeconds(), getClientsSum(), getPkgSum());
+			printf("seconds:%d, 当前客户端数量:%d, 每秒接收包数:%d, 每秒recv:%d\n", timer.GetSeconds(), getClientsSum(), getPkgSum(), getRecvSum());
 			timer.update();
 		}
 

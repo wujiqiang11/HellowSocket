@@ -50,9 +50,10 @@ public:
 	char recBuf[RECV_BUF_SIZE] = {};  //第一接收缓存区
 	char recMesBuf[RECV_BUF_SIZE * 10] = {};  //第二接收缓存区
 	int LastPos_MesBuf;  //第二接收缓存区数据的尾部位置
+	int getSendNum();
 private:
 	SOCKET _sock;
-	
+	int sendNum;  //用于记录每秒调用send的数量
 };
 
 TcpClient::TcpClient()
@@ -61,6 +62,7 @@ TcpClient::TcpClient()
 	keep_running = true;
 	LastPos_MesBuf = 0;
 	InitSocket();
+	sendNum = 0;
 }
 
 TcpClient::~TcpClient()
@@ -92,6 +94,13 @@ void TcpClient::InitSocket()
 	{
 		printf("建立 Socket 成功!\n");
 	}
+}
+
+int TcpClient::getSendNum()
+{
+	int temp = sendNum;
+	sendNum = 0;
+	return temp;
 }
 
 int TcpClient::Connect(const char* ip, unsigned short port)
@@ -279,6 +288,7 @@ void TcpClient::SendData(pkgHeader* sendHeader)
 	if (_sock != INVALID_SOCKET)
 	{
 		send(_sock, (const char*)sendHeader, sendHeader->pkgLen, 0);
+		sendNum++;
 	}
 }
 
