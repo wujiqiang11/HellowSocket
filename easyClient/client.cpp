@@ -21,9 +21,9 @@ void inputCMD()
 	}
 }
 
-const int client_num = 1;
+const int client_num = 3000; //客户端数量
 TcpClient* client[client_num];
-const int Thread_num = 1;  //客户端开启的发送线程数
+const int Thread_num = 3;  //客户端开启的发送线程数
 
 void SendThread(int n, int num, MyTimer* timer)
 {
@@ -34,6 +34,7 @@ void SendThread(int n, int num, MyTimer* timer)
 		client[i]->Connect("127.0.0.1", 4567);
 	}
 	int sendSum = 0;
+
 	while (keep_running)
 	{
 		for (int i = n * num; i < (n + 1) * num; i++)
@@ -49,6 +50,7 @@ void SendThread(int n, int num, MyTimer* timer)
 			sendSum = 0;
 		}
 	}
+
 	for (int i = n * num; i < (n + 1) * num; i++)
 	{
 		delete[] client[i];
@@ -59,6 +61,7 @@ void SendThread(int n, int num, MyTimer* timer)
 
 int main()
 {
+	
 	std::thread t(inputCMD);
 	t.detach();
 	MyTimer* timer[Thread_num];
@@ -76,8 +79,10 @@ int main()
 	{
 		delete[] timer[i];
 	}
-	//client.Connect("127.0.0.1", 4567);
+	
 	/*
+	TcpClient client;
+	client.Connect("127.0.0.1", 4567);
 	std::thread t=client.RecvCMD();  //开一个输入线程
 	t.detach();
 	while (client.keep_running)

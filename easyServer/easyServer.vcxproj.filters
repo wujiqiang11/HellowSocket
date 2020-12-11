@@ -29,5 +29,8 @@
     <ClInclude Include="High_resolution_timer.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="CellTask.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

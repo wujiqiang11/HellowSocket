@@ -24,11 +24,13 @@
 #include<mutex>
 #include<algorithm>
 #include"Message.hpp"
+#include"CellTask.hpp"
 #ifndef RECV_BUF_SIZE
 #define RECV_BUF_SIZE 10240  //第一接收缓存区的大小
 #endif // !RECV_BUF_SIZE
 using namespace std;
-const int Cell_server_num = 1;  //服务子进程的数量
+const int Cell_server_num = 3;  //服务子进程的数量
+
 class g_client  //服务端中客户端管理类
 {
 public:
@@ -39,6 +41,7 @@ public:
 	void closeSock();
 	const char* getMseBuf();
 	SOCKET sock;
+	void SendMsg(pkgHeader* sendMsgHeader);
 private:
 	char recMesBuf[RECV_BUF_SIZE * 10];  //第二接收缓存区
 	int LastPos;  //第二接收缓存区最后数据尾部位置
@@ -49,6 +52,11 @@ g_client::g_client(SOCKET _sock = INVALID_SOCKET)
 	sock = _sock;
 	memset(recMesBuf, 0, sizeof(recMesBuf));
 	LastPos = 0;
+}
+
+void g_client::SendMsg(pkgHeader* sendHeader)
+{
+	send(sock, (const char*)sendHeader, sendHeader->pkgLen, 0);
 }
 
 int g_client::getLastPos()
@@ -100,16 +108,35 @@ const char* g_client::getMseBuf()
 }
 
 
+class cellSendTask :public CellTask
+{
+public:
+	cellSendTask(g_client* g, pkgHeader* h);
+	void dotask();
+private:
+	g_client* _client;
+	pkgHeader* _sendMsg;
+};
+cellSendTask::cellSendTask(g_client* g, pkgHeader* h)
+{
+	_client = g;
+	_sendMsg = h;
+}
+void cellSendTask::dotask()
+{
+	_client->SendMsg(_sendMsg);
+}
+
+
 class CellServer
 {
 public:
 	CellServer(int seconds);
 	virtual ~CellServer();
 	void CloseSocket();  //关闭SOCKET
-	void SendData(SOCKET _csock, pkgHeader* sendHeader);  //发送数据包
 	int RecvData(g_client* _client);  //接受数据包(拆包)
 	int RecvTestData(g_client* _client);  //接受粘包测试数据包(拆包)
-	void ProcessReq(SOCKET _csock, pkgHeader* recHeader);  //处理客户端请求
+	void ProcessReq(g_client* _client, pkgHeader* recHeader);  //处理客户端请求
 	void WaitReq();  //等待客户端请求
 	int recPkgNum;  //每秒接收数据包数量
 	int recvNum;  //每秒调用recv的数量
@@ -134,7 +161,8 @@ private:
 	int select_second;  //select查询时最大时间
 	int clients_sum;  //当前服务子进程所占有的客户端总数，包括缓冲区和正在服务的客户端
 	SOCKET max_sock;
-
+	CellTaskServer cellSendServer;
+	void SendData(g_client* _client, pkgHeader* _sendMse);
 };
 
 CellServer::CellServer(int second)
@@ -149,6 +177,12 @@ CellServer::CellServer(int second)
 CellServer::~CellServer()
 {
 	CloseSocket();
+}
+
+void CellServer::SendData(g_client* _client, pkgHeader* _sendMse)
+{
+	cellSendTask* cellTask = new cellSendTask(_client, _sendMse);
+	cellSendServer.addTask(cellTask);
 }
 
 void CellServer::CloseSocket()
@@ -168,6 +202,7 @@ void CellServer::start()
 {
 	t = new std::thread(&CellServer::keep_server, this);
 	t->detach();
+	cellSendServer.start();
 }
 
 void CellServer::keep_server()
@@ -194,13 +229,6 @@ void CellServer::client_buf_export()
 	clients_buf.clear();
 }
 
-void CellServer::SendData(SOCKET _csock, pkgHeader* sendHeader)
-{
-	if (_sock != INVALID_SOCKET)
-	{
-		send(_csock, (const char*)sendHeader, sendHeader->pkgLen, 0);
-	}
-}
 
 int CellServer::RecvData(g_client* _client)
 {
@@ -219,7 +247,7 @@ int CellServer::RecvData(g_client* _client)
 			//若第二缓冲区数据长度大于接收包的长度，则处理这个包，否则说明接收到的数据包不完整
 			if (_client->getLastPos() >= recHeader->pkgLen)
 			{
-				ProcessReq(_client->sock, recHeader);
+				ProcessReq(_client, recHeader);
 				_client->moveMse(recHeader->pkgLen);
 			}
 			else
@@ -241,14 +269,14 @@ int CellServer::RecvTestData(g_client* _client)
 	else
 	{
 		printf("接收到 %d 字节数据\n", recBufLen);
-		SendData(_client->sock, &testpkg);
+		//SendData(_client->sock, &testpkg);
 		return 0;
 	}
 
 
 }
 
-void CellServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
+void CellServer::ProcessReq(g_client* _csock, pkgHeader* recHeader)
 {
 	recPkgNum++;
 	switch (recHeader->cmd)  //查看包头的命令类型
@@ -271,12 +299,12 @@ void CellServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 #endif
 		for (auto iter = clients_pro.begin(); iter != clients_pro.end(); iter++)
 		{
-			if ((*iter)->sock == _csock)
+			if ((*iter) == _csock)
 				continue;
 			else
 			{
 				//printf("发送登录广播\n");
-				SendData((*iter)->sock, &loginBro);
+				SendData(_csock, &loginBro);
 			}
 		}
 		break;
@@ -293,6 +321,7 @@ void CellServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 		//printf("发送登出返回\n");
 
 
+
 		LogoutBro logoutBro;  //新用户登出广播消息
 #ifdef _WIN32
 		strcpy_s(logoutBro.userID, logoutMse->userName);
@@ -301,11 +330,11 @@ void CellServer::ProcessReq(SOCKET _csock, pkgHeader* recHeader)
 #endif
 		for (auto iter = clients_pro.begin(); iter != clients_pro.end(); iter++)
 		{
-			if ((*iter)->sock == _csock)
+			if ((*iter) == _csock)
 				continue;
 			else
 			{
-				SendData((*iter)->sock, &logoutBro);
+				SendData(_csock, &logoutBro);
 				printf("发送登出广播\n");
 			}
 		}

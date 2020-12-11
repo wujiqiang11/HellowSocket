@@ -350,12 +350,9 @@ void TcpClient::ProcessCMD()
 		else if (strcmp(client_cmd, "test") == 0)
 		{	
 			int sum = 0;
-			while (true)
-			{
-				SendData(&testpkg);
-				//printf("发送测试数据包 %d\n",++sum);
-			}
-			//send(_sock, (const char*)&logoutMse, sizeof(LogOutData), 0);
+			//SendData(&testpkg);
+			printf("发送测试数据包 %d\n",++sum);
+			send(_sock, (const char*)&testpkg, testpkg.pkgLen, 0);
 		}
 
 		else

@@ -150,6 +150,7 @@
     <ClCompile Include="server.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CellTask.hpp" />
     <ClInclude Include="High_resolution_timer.hpp" />
     <ClInclude Include="Message.hpp" />
     <ClInclude Include="TcpServer.hpp" />
